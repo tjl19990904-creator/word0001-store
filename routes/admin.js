@@ -349,7 +349,14 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
   const { name, type, status, is_default, sort_order, client_id, client_secret, mode,
     publishable_key, secret_key, webhook_secret, merchant_id, api_key, other_config,
     bank_region, bank_account_holder, bank_account_number, bank_name, bank_branch,
-    bank_swift_code, bank_iban, bank_currency } = req.body;
+    bank_swift_code, bank_iban, bank_currency,
+    usdt_network, usdt_currency, usdt_wallet_address, usdt_merchant_id, usdt_api_key,
+    wise_email, wise_account_id, wise_currency, wise_api_key, wise_link,
+    payoneer_email, payoneer_customer_id, payoneer_currency, payoneer_account_type,
+    cashapp_cashtag, cashapp_email, cashapp_currency, cashapp_link,
+    alipay_account, alipay_name, alipay_pid, alipay_app_id, alipay_private_key, alipay_type,
+    wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type
+  } = req.body;
 
   let config = {};
   if (type === 'paypal') {
@@ -366,6 +373,54 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
       bank_swift_code: bank_swift_code || '',
       bank_iban: bank_iban || '',
       bank_currency: bank_currency || 'USD'
+    };
+  } else if (type === 'usdt') {
+    config = {
+      usdt_network: usdt_network || 'trc20',
+      usdt_currency: usdt_currency || 'USDT',
+      usdt_wallet_address: usdt_wallet_address || '',
+      usdt_merchant_id: usdt_merchant_id || '',
+      usdt_api_key: usdt_api_key || ''
+    };
+  } else if (type === 'wise') {
+    config = {
+      wise_email: wise_email || '',
+      wise_account_id: wise_account_id || '',
+      wise_currency: wise_currency || 'USD',
+      wise_api_key: wise_api_key || '',
+      wise_link: wise_link || ''
+    };
+  } else if (type === 'payoneer') {
+    config = {
+      payoneer_email: payoneer_email || '',
+      payoneer_customer_id: payoneer_customer_id || '',
+      payoneer_currency: payoneer_currency || 'USD',
+      payoneer_account_type: payoneer_account_type || 'receiving'
+    };
+  } else if (type === 'cashapp') {
+    config = {
+      cashapp_cashtag: cashapp_cashtag || '',
+      cashapp_email: cashapp_email || '',
+      cashapp_currency: cashapp_currency || 'USD',
+      cashapp_link: cashapp_link || ''
+    };
+  } else if (type === 'alipay') {
+    config = {
+      alipay_account: alipay_account || '',
+      alipay_name: alipay_name || '',
+      alipay_pid: alipay_pid || '',
+      alipay_app_id: alipay_app_id || '',
+      alipay_private_key: alipay_private_key || '',
+      alipay_type: alipay_type || 'personal'
+    };
+  } else if (type === 'wechat') {
+    config = {
+      wechat_account: wechat_account || '',
+      wechat_name: wechat_name || '',
+      wechat_mch_id: wechat_mch_id || '',
+      wechat_api_key: wechat_api_key || '',
+      wechat_app_id: wechat_app_id || '',
+      wechat_type: wechat_type || 'personal'
     };
   } else if (type === 'other') {
     config = { merchant_id: merchant_id || '', api_key: api_key || '', extra: other_config || '' };
@@ -388,7 +443,14 @@ router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
   const { name, type, status, is_default, sort_order, client_id, client_secret, mode,
     publishable_key, secret_key, webhook_secret, merchant_id, api_key, other_config,
     bank_region, bank_account_holder, bank_account_number, bank_name, bank_branch,
-    bank_swift_code, bank_iban, bank_currency } = req.body;
+    bank_swift_code, bank_iban, bank_currency,
+    usdt_network, usdt_currency, usdt_wallet_address, usdt_merchant_id, usdt_api_key,
+    wise_email, wise_account_id, wise_currency, wise_api_key, wise_link,
+    payoneer_email, payoneer_customer_id, payoneer_currency, payoneer_account_type,
+    cashapp_cashtag, cashapp_email, cashapp_currency, cashapp_link,
+    alipay_account, alipay_name, alipay_pid, alipay_app_id, alipay_private_key, alipay_type,
+    wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type
+  } = req.body;
 
   let config = {};
   if (type === 'paypal') {
@@ -405,6 +467,54 @@ router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
       bank_swift_code: bank_swift_code || '',
       bank_iban: bank_iban || '',
       bank_currency: bank_currency || 'USD'
+    };
+  } else if (type === 'usdt') {
+    config = {
+      usdt_network: usdt_network || 'trc20',
+      usdt_currency: usdt_currency || 'USDT',
+      usdt_wallet_address: usdt_wallet_address || '',
+      usdt_merchant_id: usdt_merchant_id || '',
+      usdt_api_key: usdt_api_key || ''
+    };
+  } else if (type === 'wise') {
+    config = {
+      wise_email: wise_email || '',
+      wise_account_id: wise_account_id || '',
+      wise_currency: wise_currency || 'USD',
+      wise_api_key: wise_api_key || '',
+      wise_link: wise_link || ''
+    };
+  } else if (type === 'payoneer') {
+    config = {
+      payoneer_email: payoneer_email || '',
+      payoneer_customer_id: payoneer_customer_id || '',
+      payoneer_currency: payoneer_currency || 'USD',
+      payoneer_account_type: payoneer_account_type || 'receiving'
+    };
+  } else if (type === 'cashapp') {
+    config = {
+      cashapp_cashtag: cashapp_cashtag || '',
+      cashapp_email: cashapp_email || '',
+      cashapp_currency: cashapp_currency || 'USD',
+      cashapp_link: cashapp_link || ''
+    };
+  } else if (type === 'alipay') {
+    config = {
+      alipay_account: alipay_account || '',
+      alipay_name: alipay_name || '',
+      alipay_pid: alipay_pid || '',
+      alipay_app_id: alipay_app_id || '',
+      alipay_private_key: alipay_private_key || '',
+      alipay_type: alipay_type || 'personal'
+    };
+  } else if (type === 'wechat') {
+    config = {
+      wechat_account: wechat_account || '',
+      wechat_name: wechat_name || '',
+      wechat_mch_id: wechat_mch_id || '',
+      wechat_api_key: wechat_api_key || '',
+      wechat_app_id: wechat_app_id || '',
+      wechat_type: wechat_type || 'personal'
     };
   } else if (type === 'other') {
     config = { merchant_id: merchant_id || '', api_key: api_key || '', extra: other_config || '' };

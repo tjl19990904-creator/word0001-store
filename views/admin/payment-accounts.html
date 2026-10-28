@@ -35,6 +35,12 @@
                 <select name="type" id="add-type" onchange="toggleConfigFields('add')">
                   <option value="paypal">PayPal</option>
                   <option value="stripe">Stripe</option>
+                  <option value="usdt">USDT / 加密货币</option>
+                  <option value="wise">Wise (TransferWise)</option>
+                  <option value="payoneer">Payoneer</option>
+                  <option value="cashapp">Cash App</option>
+                  <option value="alipay">支付宝</option>
+                  <option value="wechat">微信支付</option>
                   <option value="bank">银行卡</option>
                   <option value="other">其他</option>
                 </select>
@@ -135,6 +141,204 @@
               </div>
             </div>
 
+            <!-- USDT / Crypto Config -->
+            <div id="add-usdt-config" class="config-section" style="display:none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>USDT 收款网络 *</label>
+                  <select name="usdt_network">
+                    <option value="trc20">TRC20 (TRON) — 手续费低，推荐</option>
+                    <option value="erc20">ERC20 (Ethereum) — 主流网络</option>
+                    <option value="bep20">BEP20 (BSC) — 币安链</option>
+                    <option value="omni">Omni Layer</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>结算货币</label>
+                  <select name="usdt_currency">
+                    <option value="USDT">USDT</option>
+                    <option value="USDC">USDC</option>
+                    <option value="BTC">BTC</option>
+                    <option value="ETH">ETH</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款钱包地址 *</label>
+                <input type="text" name="usdt_wallet_address" placeholder="输入你的 USDT 钱包地址">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>API Merchant ID（可选）</label>
+                  <input type="text" name="usdt_merchant_id" placeholder="如使用支付网关（如 NOWPayments/CoinPayments）">
+                </div>
+                <div class="form-group">
+                  <label>API Key（可选）</label>
+                  <input type="text" name="usdt_api_key" placeholder="支付网关 API Key">
+                </div>
+              </div>
+            </div>
+
+            <!-- Wise Config -->
+            <div id="add-wise-config" class="config-section" style="display:none;">
+              <div class="form-group">
+                <label>Wise 账户邮箱 *</label>
+                <input type="text" name="wise_email" placeholder="你的 Wise 注册邮箱">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Wise 账户 ID</label>
+                  <input type="text" name="wise_account_id" placeholder="Wise 账户 ID（可选）">
+                </div>
+                <div class="form-group">
+                  <label>收款货币</label>
+                  <select name="wise_currency">
+                    <option value="USD">USD - 美元</option>
+                    <option value="EUR">EUR - 欧元</option>
+                    <option value="GBP">GBP - 英镑</option>
+                    <option value="JPY">JPY - 日元</option>
+                    <option value="AUD">AUD - 澳元</option>
+                    <option value="CAD">CAD - 加元</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>API Token（可选）</label>
+                  <input type="text" name="wise_api_key" placeholder="Wise Business API Token">
+                </div>
+                <div class="form-group">
+                  <label>收款链接</label>
+                  <input type="text" name="wise_link" placeholder="wise.com/pay/share/xxx">
+                </div>
+              </div>
+            </div>
+
+            <!-- Payoneer Config -->
+            <div id="add-payoneer-config" class="config-section" style="display:none;">
+              <div class="form-group">
+                <label>Payoneer 注册邮箱 *</label>
+                <input type="text" name="payoneer_email" placeholder="你的 Payoneer 注册邮箱">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>客户 ID (Customer ID)</label>
+                  <input type="text" name="payoneer_customer_id" placeholder="Payoneer 客户 ID">
+                </div>
+                <div class="form-group">
+                  <label>收款货币</label>
+                  <select name="payoneer_currency">
+                    <option value="USD">USD - 美元</option>
+                    <option value="EUR">EUR - 欧元</option>
+                    <option value="GBP">GBP - 英镑</option>
+                    <option value="JPY">JPY - 日元</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款账户类型</label>
+                <select name="payoneer_account_type">
+                  <option value="receiving">收款账户（Receiving Account）</option>
+                  <option value="request_payment">请求付款链接（Request Payment）</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Cash App Config -->
+            <div id="add-cashapp-config" class="config-section" style="display:none;">
+              <div class="form-group">
+                <label>Cash App $Cashtag *</label>
+                <input type="text" name="cashapp_cashtag" placeholder="例如 $yourname">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>注册邮箱</label>
+                  <input type="text" name="cashapp_email" placeholder="Cash App 注册邮箱">
+                </div>
+                <div class="form-group">
+                  <label>收款货币</label>
+                  <select name="cashapp_currency">
+                    <option value="USD">USD - 美元</option>
+                    <option value="GBP">GBP - 英镑</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款链接</label>
+                <input type="text" name="cashapp_link" placeholder="cash.app/$yourname">
+              </div>
+            </div>
+
+            <!-- Alipay Config -->
+            <div id="add-alipay-config" class="config-section" style="display:none;">
+              <div class="form-group">
+                <label>支付宝账户 *</label>
+                <input type="text" name="alipay_account" placeholder="支付宝邮箱或手机号">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>收款人真实姓名 *</label>
+                  <input type="text" name="alipay_name" placeholder="实名认证姓名">
+                </div>
+                <div class="form-group">
+                  <label>商户 PID（可选）</label>
+                  <input type="text" name="alipay_pid" placeholder="支付宝商户 PID">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>App ID（可选）</label>
+                  <input type="text" name="alipay_app_id" placeholder="支付宝开放平台 App ID">
+                </div>
+                <div class="form-group">
+                  <label>私钥（可选）</label>
+                  <input type="text" name="alipay_private_key" placeholder="应用私钥">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款类型</label>
+                <select name="alipay_type">
+                  <option value="personal">个人收款码（线下转账）</option>
+                  <option value="merchant">商户接口（在线支付）</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- WeChat Pay Config -->
+            <div id="add-wechat-config" class="config-section" style="display:none;">
+              <div class="form-group">
+                <label>微信账户 *</label>
+                <input type="text" name="wechat_account" placeholder="微信号或绑定的手机号">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>收款人真实姓名 *</label>
+                  <input type="text" name="wechat_name" placeholder="实名认证姓名">
+                </div>
+                <div class="form-group">
+                  <label>商户号（可选）</label>
+                  <input type="text" name="wechat_mch_id" placeholder="微信支付商户号">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>API Key（可选）</label>
+                  <input type="text" name="wechat_api_key" placeholder="微信支付 API Key">
+                </div>
+                <div class="form-group">
+                  <label>App ID（可选）</label>
+                  <input type="text" name="wechat_app_id" placeholder="公众号/小程序 App ID">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款类型</label>
+                <select name="wechat_type">
+                  <option value="personal">个人收款码（线下转账）</option>
+                  <option value="merchant">商户接口（在线支付）</option>
+                </select>
+              </div>
+            </div>
+
             <!-- Other Config -->
             <div id="add-other-config" class="config-section" style="display:none;">
               <div class="form-row">
@@ -218,6 +422,12 @@
     const typeMap = {
       'paypal': 'PayPal',
       'stripe': 'Stripe',
+      'usdt': 'USDT / 加密货币',
+      'wise': 'Wise',
+      'payoneer': 'Payoneer',
+      'cashapp': 'Cash App',
+      'alipay': '支付宝',
+      'wechat': '微信支付',
       'bank': '银行卡',
       'other': '其他'
     };
@@ -292,6 +502,12 @@
                 <select name="type" id="edit-type" onchange="toggleEditConfig(this.value)">
                   <option value="paypal" ${acc.type === 'paypal' ? 'selected' : ''}>PayPal</option>
                   <option value="stripe" ${acc.type === 'stripe' ? 'selected' : ''}>Stripe</option>
+                  <option value="usdt" ${acc.type === 'usdt' ? 'selected' : ''}>USDT / 加密货币</option>
+                  <option value="wise" ${acc.type === 'wise' ? 'selected' : ''}>Wise (TransferWise)</option>
+                  <option value="payoneer" ${acc.type === 'payoneer' ? 'selected' : ''}>Payoneer</option>
+                  <option value="cashapp" ${acc.type === 'cashapp' ? 'selected' : ''}>Cash App</option>
+                  <option value="alipay" ${acc.type === 'alipay' ? 'selected' : ''}>支付宝</option>
+                  <option value="wechat" ${acc.type === 'wechat' ? 'selected' : ''}>微信支付</option>
                   <option value="bank" ${acc.type === 'bank' ? 'selected' : ''}>银行卡</option>
                   <option value="other" ${acc.type === 'other' ? 'selected' : ''}>其他</option>
                 </select>
@@ -332,6 +548,198 @@
               <div class="form-group">
                 <label>Webhook 密钥</label>
                 <input type="text" name="webhook_secret" value="${config.webhook_secret || ''}">
+              </div>
+            </div>
+
+            <div id="edit-usdt" class="edit-config" style="${acc.type === 'usdt' ? '' : 'display:none;'}">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>USDT 收款网络 *</label>
+                  <select name="usdt_network">
+                    <option value="trc20" ${config.usdt_network === 'trc20' ? 'selected' : ''}>TRC20 (TRON) — 手续费低，推荐</option>
+                    <option value="erc20" ${config.usdt_network === 'erc20' ? 'selected' : ''}>ERC20 (Ethereum)</option>
+                    <option value="bep20" ${config.usdt_network === 'bep20' ? 'selected' : ''}>BEP20 (BSC)</option>
+                    <option value="omni" ${config.usdt_network === 'omni' ? 'selected' : ''}>Omni Layer</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>结算货币</label>
+                  <select name="usdt_currency">
+                    <option value="USDT" ${config.usdt_currency === 'USDT' ? 'selected' : ''}>USDT</option>
+                    <option value="USDC" ${config.usdt_currency === 'USDC' ? 'selected' : ''}>USDC</option>
+                    <option value="BTC" ${config.usdt_currency === 'BTC' ? 'selected' : ''}>BTC</option>
+                    <option value="ETH" ${config.usdt_currency === 'ETH' ? 'selected' : ''}>ETH</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款钱包地址 *</label>
+                <input type="text" name="usdt_wallet_address" value="${config.usdt_wallet_address || ''}" placeholder="输入你的 USDT 钱包地址">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>API Merchant ID（可选）</label>
+                  <input type="text" name="usdt_merchant_id" value="${config.usdt_merchant_id || ''}" placeholder="如使用 NOWPayments/CoinPayments">
+                </div>
+                <div class="form-group">
+                  <label>API Key（可选）</label>
+                  <input type="text" name="usdt_api_key" value="${config.usdt_api_key || ''}" placeholder="支付网关 API Key">
+                </div>
+              </div>
+            </div>
+
+            <div id="edit-wise" class="edit-config" style="${acc.type === 'wise' ? '' : 'display:none;'}">
+              <div class="form-group">
+                <label>Wise 账户邮箱 *</label>
+                <input type="text" name="wise_email" value="${config.wise_email || ''}" placeholder="你的 Wise 注册邮箱">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Wise 账户 ID</label>
+                  <input type="text" name="wise_account_id" value="${config.wise_account_id || ''}" placeholder="Wise 账户 ID（可选）">
+                </div>
+                <div class="form-group">
+                  <label>收款货币</label>
+                  <select name="wise_currency">
+                    <option value="USD" ${config.wise_currency === 'USD' ? 'selected' : ''}>USD - 美元</option>
+                    <option value="EUR" ${config.wise_currency === 'EUR' ? 'selected' : ''}>EUR - 欧元</option>
+                    <option value="GBP" ${config.wise_currency === 'GBP' ? 'selected' : ''}>GBP - 英镑</option>
+                    <option value="JPY" ${config.wise_currency === 'JPY' ? 'selected' : ''}>JPY - 日元</option>
+                    <option value="AUD" ${config.wise_currency === 'AUD' ? 'selected' : ''}>AUD - 澳元</option>
+                    <option value="CAD" ${config.wise_currency === 'CAD' ? 'selected' : ''}>CAD - 加元</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>API Token（可选）</label>
+                  <input type="text" name="wise_api_key" value="${config.wise_api_key || ''}" placeholder="Wise Business API Token">
+                </div>
+                <div class="form-group">
+                  <label>收款链接</label>
+                  <input type="text" name="wise_link" value="${config.wise_link || ''}" placeholder="wise.com/pay/share/xxx">
+                </div>
+              </div>
+            </div>
+
+            <div id="edit-payoneer" class="edit-config" style="${acc.type === 'payoneer' ? '' : 'display:none;'}">
+              <div class="form-group">
+                <label>Payoneer 注册邮箱 *</label>
+                <input type="text" name="payoneer_email" value="${config.payoneer_email || ''}" placeholder="你的 Payoneer 注册邮箱">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>客户 ID (Customer ID)</label>
+                  <input type="text" name="payoneer_customer_id" value="${config.payoneer_customer_id || ''}" placeholder="Payoneer 客户 ID">
+                </div>
+                <div class="form-group">
+                  <label>收款货币</label>
+                  <select name="payoneer_currency">
+                    <option value="USD" ${config.payoneer_currency === 'USD' ? 'selected' : ''}>USD - 美元</option>
+                    <option value="EUR" ${config.payoneer_currency === 'EUR' ? 'selected' : ''}>EUR - 欧元</option>
+                    <option value="GBP" ${config.payoneer_currency === 'GBP' ? 'selected' : ''}>GBP - 英镑</option>
+                    <option value="JPY" ${config.payoneer_currency === 'JPY' ? 'selected' : ''}>JPY - 日元</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款账户类型</label>
+                <select name="payoneer_account_type">
+                  <option value="receiving" ${config.payoneer_account_type === 'receiving' ? 'selected' : ''}>收款账户（Receiving Account）</option>
+                  <option value="request_payment" ${config.payoneer_account_type === 'request_payment' ? 'selected' : ''}>请求付款链接（Request Payment）</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="edit-cashapp" class="edit-config" style="${acc.type === 'cashapp' ? '' : 'display:none;'}">
+              <div class="form-group">
+                <label>Cash App $Cashtag *</label>
+                <input type="text" name="cashapp_cashtag" value="${config.cashapp_cashtag || ''}" placeholder="例如 $yourname">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>注册邮箱</label>
+                  <input type="text" name="cashapp_email" value="${config.cashapp_email || ''}" placeholder="Cash App 注册邮箱">
+                </div>
+                <div class="form-group">
+                  <label>收款货币</label>
+                  <select name="cashapp_currency">
+                    <option value="USD" ${config.cashapp_currency === 'USD' ? 'selected' : ''}>USD - 美元</option>
+                    <option value="GBP" ${config.cashapp_currency === 'GBP' ? 'selected' : ''}>GBP - 英镑</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款链接</label>
+                <input type="text" name="cashapp_link" value="${config.cashapp_link || ''}" placeholder="cash.app/$yourname">
+              </div>
+            </div>
+
+            <div id="edit-alipay" class="edit-config" style="${acc.type === 'alipay' ? '' : 'display:none;'}">
+              <div class="form-group">
+                <label>支付宝账户 *</label>
+                <input type="text" name="alipay_account" value="${config.alipay_account || ''}" placeholder="支付宝邮箱或手机号">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>收款人真实姓名 *</label>
+                  <input type="text" name="alipay_name" value="${config.alipay_name || ''}" placeholder="实名认证姓名">
+                </div>
+                <div class="form-group">
+                  <label>商户 PID（可选）</label>
+                  <input type="text" name="alipay_pid" value="${config.alipay_pid || ''}" placeholder="支付宝商户 PID">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>App ID（可选）</label>
+                  <input type="text" name="alipay_app_id" value="${config.alipay_app_id || ''}" placeholder="支付宝开放平台 App ID">
+                </div>
+                <div class="form-group">
+                  <label>私钥（可选）</label>
+                  <input type="text" name="alipay_private_key" value="${config.alipay_private_key || ''}" placeholder="应用私钥">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款类型</label>
+                <select name="alipay_type">
+                  <option value="personal" ${config.alipay_type === 'personal' ? 'selected' : ''}>个人收款码（线下转账）</option>
+                  <option value="merchant" ${config.alipay_type === 'merchant' ? 'selected' : ''}>商户接口（在线支付）</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="edit-wechat" class="edit-config" style="${acc.type === 'wechat' ? '' : 'display:none;'}">
+              <div class="form-group">
+                <label>微信账户 *</label>
+                <input type="text" name="wechat_account" value="${config.wechat_account || ''}" placeholder="微信号或绑定的手机号">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>收款人真实姓名 *</label>
+                  <input type="text" name="wechat_name" value="${config.wechat_name || ''}" placeholder="实名认证姓名">
+                </div>
+                <div class="form-group">
+                  <label>商户号（可选）</label>
+                  <input type="text" name="wechat_mch_id" value="${config.wechat_mch_id || ''}" placeholder="微信支付商户号">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>API Key（可选）</label>
+                  <input type="text" name="wechat_api_key" value="${config.wechat_api_key || ''}" placeholder="微信支付 API Key">
+                </div>
+                <div class="form-group">
+                  <label>App ID（可选）</label>
+                  <input type="text" name="wechat_app_id" value="${config.wechat_app_id || ''}" placeholder="公众号/小程序 App ID">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>收款类型</label>
+                <select name="wechat_type">
+                  <option value="personal" ${config.wechat_type === 'personal' ? 'selected' : ''}>个人收款码（线下转账）</option>
+                  <option value="merchant" ${config.wechat_type === 'merchant' ? 'selected' : ''}>商户接口（在线支付）</option>
+                </select>
               </div>
             </div>
 
