@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>产品列表 - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar" id="sidebar"></aside>
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">产品列表</div>
+        <div class="topbar-actions">
+          <div class="admin-user"><div class="admin-avatar">A</div><span>admin</span></div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+
+      <div class="admin-content">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>产品列表</h3>
+            <a href="/admin/products/new" class="btn-admin btn-admin-primary btn-admin-sm">+ 添加新产品</a>
+          </div>
+
+          <div class="filters-bar">
+            <form method="GET" action="/admin/products" style="display:flex; gap:8px; flex:1;">
+              <input type="text" name="search" placeholder="按名称或SKU搜索..." value="{{data.search}}" class="search-input">
+              <button type="submit" class="btn-admin btn-admin-secondary btn-admin-sm">搜索</button>
+            </form>
+            <a href="/admin/products" class="btn-admin btn-admin-secondary btn-admin-sm">重置</a>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>图片</th>
+                  <th>名称</th>
+                  <th>SKU</th>
+                  <th>价格</th>
+                  <th>库存</th>
+                  <th>分类</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="products-table"></tbody>
+            </table>
+          </div>
+
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+  <script>
+    renderSidebar('products');
+    const products = {{data:json:products}};
+    const currentPage = {{data.currentPage}};
+    const totalPages = {{data.totalPages}};
+    const search = "{{data.search}}";
+
+    const productStatusMap = {
+      'active': '上架',
+      'draft': '草稿',
+      'archived': '已归档'
+    };
+
+    const tbody = document.getElementById('products-table');
+    if (products.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:30px;">暂无产品。点击"添加新产品"来创建。</td></tr>';
+    } else {
+      tbody.innerHTML = products.map(p => `
+        <tr>
+          <td>${p.primary_image ? `<img src="${p.primary_image}" class="product-thumb">` : '<div style="width:50px;height:50px;background:#f1f5f9;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#999;">无图</div>'}</td>
+          <td><strong>${p.name}</strong></td>
+          <td>${p.sku || '-'}</td>
+          <td>$${p.price.toFixed(2)}</td>
+          <td><span class="${p.stock < 10 ? 'badge badge-danger' : ''}">${p.stock}</span></td>
+          <td>${p.category_name || '-'}</td>
+          <td><span class="badge ${p.status === 'active' ? 'badge-success' : 'badge-secondary'}">${productStatusMap[p.status] || p.status}</span></td>
+          <td>
+            <a href="/admin/products/${p.id}/edit" class="action-btn">编辑</a>
+            <form method="POST" action="/admin/products/${p.id}/delete" id="del-${p.id}" style="display:inline;">
+              <button type="button" class="action-btn danger" onclick="confirmDelete('del-${p.id}')">删除</button>
+            </form>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Pagination
+    const pagEl = document.getElementById('pagination');
+    if (pagEl && totalPages > 1) {
+      let html = '';
+      for (let i = 1; i <= totalPages; i++) {
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        params.set('page', i);
+        html += `<a href="/admin/products?${params.toString()}" class="${i === currentPage ? 'active' : ''}">${i}</a>`;
+      }
+      pagEl.innerHTML = html;
+    }
+  </script>
+</body>
+</html>

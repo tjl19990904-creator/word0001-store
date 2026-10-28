@@ -1,0 +1,307 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "$2a$10$zuWDPi9Il8qJGnEyqXi1feOWksVyT7AQS.KsRuOlCI42wE14EPw9O",
+      "email": "admin@word0001.com",
+      "role": "admin",
+      "created_at": "2026-10-28T10:46:06.314Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "Crystal Healing",
+      "description": "Natural crystals for healing, meditation, and energy work",
+      "sort_order": 1,
+      "created_at": "2026-10-28T10:46:06.318Z"
+    },
+    {
+      "id": 2,
+      "name": "Meditation Tools",
+      "description": "Mala beads, instruments, and tools for meditation practice",
+      "sort_order": 2,
+      "created_at": "2026-10-28T10:46:06.325Z"
+    },
+    {
+      "id": 3,
+      "name": "Spiritual Jewelry",
+      "description": "Pendants and wearable healing crystal items",
+      "sort_order": 3,
+      "created_at": "2026-10-28T10:46:06.327Z"
+    },
+    {
+      "id": 4,
+      "name": "Musical Instruments",
+      "description": "Traditional healing sound instruments",
+      "sort_order": 4,
+      "created_at": "2026-10-28T10:46:06.330Z"
+    }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "name": "Handmade Chinese Xun Pottery Flute 10 Holes",
+      "slug": "handmade-chinese-xun-pottery-flute-10-holes",
+      "short_description": "Discover the unique charm of the 10 Holes Pottery Xun - a handmade bull head ocarina flute crafted with traditional Nixing pottery.",
+      "description": "## Discover the Unique Charm of the 10 Holes Pottery Xun\n\nUnlock the enchanting sounds of the **10 Holes Pottery Xun**, a masterpiece of traditional Chinese craftsmanship. This **handmade bull head ocarina flute** is a perfect blend of artistry and function, designed for both beginners and experienced musicians. As a **xun musical instrument**, it offers a distinct sound that is both soothing and captivating. Whether you're looking to explore new musical expressions or seeking a unique gift, the **Chinese xun** provides an authentic experience rooted in rich cultural heritage.\n\n## Handcrafted Excellence with Healing Sounds\n\nAt Healing Sounds, each xun is crafted with meticulous attention to detail, using **Nixing pottery**, renowned for its natural kiln transformation process. This ensures that every piece is not only a musical instrument but also a work of art. The **10 holes** design offers a versatile range of tones from bass 5 to treble 2, allowing for a broad spectrum of musical creativity. With options in F, G, D, and C tones, our xun provides flexibility for different musical styles and preferences.\n\n## Perfect for Relaxation and Musical Exploration\n\nThe **xun instrument** is ideal for relaxation and meditative practices, producing calming tones that support mindfulness and serenity. Its soothing sound makes it a wonderful addition to personal meditation routines or sound bath sessions. The **traditional ocarinas music instrument** encourages mindfulness and creativity, making it a popular choice for those seeking to enhance their musical journey. Gift yourself or a loved one the experience of tranquility and creative expression with this exquisite instrument.\n\n## Why Choose Our Retro Handmade Xun\n\nChoosing our **retro handmade xun** means investing in quality and tradition. Each piece is designed to last, offering a durable and reliable musical companion. The unique bull head design adds a touch of elegance and sophistication, making it not just an instrument but a conversation piece. As a part of your musical collection, it stands out for its aesthetic appeal and historical significance, offering both visual and auditory delight. Embrace the fusion of tradition and modernity with our exceptional xun.",
+      "price": 188.88,
+      "compare_price": null,
+      "cost": 0,
+      "sku": "POTTERY-XUN-001",
+      "stock": 25,
+      "category_id": 4,
+      "images": "[\"/uploads/products/xun-pottery-flute.webp\"]",
+      "status": "active",
+      "weight": 0.3,
+      "dimensions": "8x6x4cm",
+      "meta_title": "Handmade Chinese Xun Pottery Flute 10 Holes - Healing Sounds",
+      "meta_description": "Discover the unique charm of the 10 Holes Pottery Xun, a handmade bull head ocarina flute crafted with traditional Nixing pottery. Perfect for meditation and relaxation.",
+      "featured": 1,
+      "sort_order": 1,
+      "created_at": "2026-10-28T10:46:06.337Z",
+      "category_name": "Musical Instruments",
+      "image_list": [
+        "/uploads/products/xun-pottery-flute.webp"
+      ],
+      "primary_image": "/uploads/products/xun-pottery-flute.webp"
+    },
+    {
+      "id": 2,
+      "name": "0.25kg Desert Rose Raw Crystal for Healing",
+      "slug": "0-25kg-desert-rose-raw-crystal-for-healing",
+      "short_description": "Unleash the ethereal beauty of raw crystals - 0.25kg Desert Rose Raw Crystal for Healing, naturally occurring delicate petal-like clusters carrying the serene energy of desert landscapes.",
+      "description": "Unleash the ethereal beauty of **raw crystals** with our exquisite **0.25kg Desert Rose Raw Crystal for Healing**. These enchanting formations, naturally occurring in arid regions, manifest as delicate petal-like clusters that carry the serene energy of desert landscapes. Each small bag contains approximately 0.25kg of these mesmerizing **raw mineral specimens**, providing you with multiple pieces to incorporate into your spiritual practice.\n\n## Healing Properties\n\nDesert Rose crystals are known for their ability to:\n- Cleanse and purify energy fields\n- Promote mental clarity and focus\n- Support emotional healing and stress relief\n- Enhance meditation and spiritual practices\n- Provide grounding and protective energy\n\n## Perfect for Multiple Uses\n\n- Crystal grid layouts and healing layouts\n- Home decoration and altar display\n- Meditation companions\n- Crystal collection enhancement\n- Gift for crystal enthusiasts and healers\n\nEach piece is 100% natural and unique - no two desert rose formations are exactly alike. The natural formation process creates stunning rose-like crystalline structures that are as beautiful as they are energetically powerful.",
+      "price": 48.88,
+      "compare_price": null,
+      "cost": 0,
+      "sku": "CRYSTAL-DR-002",
+      "stock": 50,
+      "category_id": 1,
+      "images": "[\"/uploads/products/desert-rose-crystal.webp\"]",
+      "status": "active",
+      "weight": 0.25,
+      "dimensions": "10x8x5cm",
+      "meta_title": "0.25kg Desert Rose Raw Crystal for Healing - Natural Mineral Specimens",
+      "meta_description": "Unleash the ethereal beauty of raw crystals with our 0.25kg Desert Rose Raw Crystal for Healing. Naturally occurring delicate petal-like clusters with serene desert energy.",
+      "featured": 1,
+      "sort_order": 2,
+      "created_at": "2026-10-28T10:46:06.340Z",
+      "category_name": "Crystal Healing",
+      "image_list": [
+        "/uploads/products/desert-rose-crystal.webp"
+      ],
+      "primary_image": "/uploads/products/desert-rose-crystal.webp"
+    },
+    {
+      "id": 3,
+      "name": "0.5 inch Mixed Crystal Healing Cube - Meditation Energy",
+      "slug": "0-5-inch-mixed-crystal-healing-cube-meditation-energy",
+      "short_description": "Experience the harmonizing energy of our 0.5 inch Mixed Crystal Healing Cube - perfectly formed crystal cubes combining geometric precision with natural earth energy for powerful meditation.",
+      "description": "Experience the harmonizing energy of our **0.5 inch Mixed Crystal Healing Cube**. These perfectly formed **crystal cubes** combine geometric precision with natural earth energy, creating powerful meditation tools that fit comfortably in your palm or sacred space. Each cube harnesses the unique vibrational properties of its crystal type while maintaining the balanced symmetry that makes cube formations especially potent for energy work.\n\n## Why Crystal Cubes?\n\nThe cube shape is one of the five sacred geometric shapes, representing the element of earth and grounding energy. When combined with the natural properties of crystals, cube formations:\n\n- Amplify and focus energy in a structured, organized way\n- Provide grounding and stability during meditation\n- Create a sense of order and balance in your space\n- Serve as excellent tools for intention setting\n- Perfect for grid work and crystal layouts\n\n## Versatile Applications\n\n- **Meditation companion**: Hold during meditation for grounded focus\n- **Altar piece**: Add to your sacred space for balanced energy\n- **Crystal grids**: Use as a centering stone in grid layouts\n- **Feng Shui**: Place in the northeast corner for knowledge and wisdom\n- **Pocket stone**: Carry with you for daily energetic support\n\nEach cube is unique, featuring natural variations in color, pattern, and inclusions that make every piece one of a kind.",
+      "price": 12.8,
+      "compare_price": null,
+      "cost": 0,
+      "sku": "CRYSTAL-CB-003",
+      "stock": 80,
+      "category_id": 1,
+      "images": "[\"/uploads/products/crystal-healing-cube.webp\"]",
+      "status": "active",
+      "weight": 0.1,
+      "dimensions": "1.27cm (0.5 inch)",
+      "meta_title": "0.5 inch Mixed Crystal Healing Cube - Meditation Energy Tool",
+      "meta_description": "Experience the harmonizing energy of our 0.5 inch Mixed Crystal Healing Cube. Perfectly formed crystal cubes combining geometric precision with natural earth energy.",
+      "featured": 1,
+      "sort_order": 3,
+      "created_at": "2026-10-28T10:46:06.343Z",
+      "category_name": "Crystal Healing",
+      "image_list": [
+        "/uploads/products/crystal-healing-cube.webp"
+      ],
+      "primary_image": "/uploads/products/crystal-healing-cube.webp"
+    },
+    {
+      "id": 4,
+      "name": "1.1-inch Mixed Crystal Spiritual Pendant for Healing & Protection",
+      "slug": "1-1-inch-mixed-crystal-spiritual-pendant-for-healing-protection",
+      "short_description": "The 1.1-inch Mixed Crystal Spiritual Pendant for Healing & Protection invites transformative energy into your daily life - a beautifully crafted spiritual necklace with a stunning gemstone centerpiece.",
+      "description": "## Embrace Healing Energy with Spiritual Necklaces\n\nThe **1.1-inch Mixed Crystal Spiritual Pendant for Healing & Protection** invites transformative energy into your daily life. This beautifully crafted **spiritual necklace** features a stunning gemstone centerpiece nestled within an intricately designed silver-toned setting. Each pendant serves as a personal talisman, connecting you to the earth's natural healing vibrations while adorning your neckline with meaningful beauty.\n\n## A Personal Talisman for Daily Wear\n\nMore than just a beautiful piece of jewelry, this **healing crystal pendant** is designed to be your daily companion for spiritual protection and energy alignment. The mixed crystal centerpiece is carefully selected for its unique vibrational properties, offering a blend of healing energies that support your emotional, physical, and spiritual well-being.\n\n## Protection and Healing Combined\n\nThe pendant's design incorporates sacred geometry and crystal wisdom to provide:\n- **Protective energy**: Shields against negative vibrations and electromagnetic interference\n- **Emotional healing**: Supports emotional balance and inner peace\n- **Spiritual connection**: Enhances intuition and spiritual awareness\n- **Daily grounding**: Keeps you centered and balanced throughout your day\n- **Energy amplification**: Magnifies your intentions and affirmations\n\nEach pendant is unique, as the natural crystal variations ensure no two pieces are exactly alike. The silver-toned setting is crafted to complement the crystal's natural beauty while providing durability for everyday wear.",
+      "price": 288.99,
+      "compare_price": null,
+      "cost": 0,
+      "sku": "CRYSTAL-PD-004",
+      "stock": 45,
+      "category_id": 3,
+      "images": "[\"/uploads/products/crystal-spiritual-pendant.webp\"]",
+      "status": "active",
+      "weight": 0.05,
+      "dimensions": "2.8cm (1.1 inch)",
+      "meta_title": "1.1-inch Mixed Crystal Spiritual Pendant for Healing & Protection",
+      "meta_description": "The 1.1-inch Mixed Crystal Spiritual Pendant for Healing & Protection invites transformative energy into your daily life. A beautifully crafted spiritual necklace with gemstone centerpiece.",
+      "featured": 1,
+      "sort_order": 4,
+      "created_at": "2026-10-28T10:46:06.345Z",
+      "category_name": "Spiritual Jewelry",
+      "image_list": [
+        "/uploads/products/crystal-spiritual-pendant.webp"
+      ],
+      "primary_image": "/uploads/products/crystal-spiritual-pendant.webp"
+    },
+    {
+      "id": 5,
+      "name": "8mm Mysore Sandalwood Wood Mala Bracelet for Meditation",
+      "slug": "8mm-mysore-sandalwood-wood-mala-bracelet-for-meditation",
+      "short_description": "Experience the sublime essence of wood mala beads with our 8mm Mysore Sandalwood Wood Mala Bracelet - harnessing the sacred qualities of authentic Mysore sandalwood for meditation.",
+      "description": "Experience the sublime essence of **wood mala beads** with our 8mm Mysore Sandalwood Wood Mala Bracelet for Meditation. This exceptional bracelet harnesses the sacred qualities of authentic Mysore sandalwood, renowned for centuries in spiritual practice. Each bead resonates with the natural calming vibration that only genuine **sandalwood mala beads** can offer, creating an essential companion for your meditation journey.\n\n## The Sacred Tradition of Sandalwood\n\nMysore sandalwood (Santalum album) is considered the finest sandalwood in the world, prized for its rich, warm fragrance and spiritual significance. For thousands of years, it has been used in:\n- Buddhist and Hindu meditation practices\n- Traditional Ayurvedic medicine\n- Religious ceremonies and rituals\n- Aromatherapy and natural healing\n- Spiritual grounding and centering\n\n## Features and Benefits\n\n- **Authentic Mysore sandalwood**: Sourced from genuine Santalum album trees\n- **8mm bead size**: Perfect for comfortable wear and counting mantras\n- **Traditional mala design**: 108 beads for complete prayer cycles\n- **Natural calming fragrance**: Releases subtle sandalwood aroma with body heat\n- **Versatile wear**: Can be worn as a bracelet or necklace\n- **Meditation aid**: Helps maintain focus and count during mantra repetition\n- **Durable construction**: Strung on strong elastic cord for lasting use\n\nEach mala is handcrafted with care, ensuring that every bead is properly spaced and secured. The natural variation in wood grain makes each bracelet unique and personal to its wearer.",
+      "price": 58.8,
+      "compare_price": null,
+      "cost": 0,
+      "sku": "WOOD-ML-005",
+      "stock": 60,
+      "category_id": 2,
+      "images": "[\"/uploads/products/sandalwood-mala-bracelet.webp\"]",
+      "status": "active",
+      "weight": 0.03,
+      "dimensions": "8mm beads, 108 count",
+      "meta_title": "8mm Mysore Sandalwood Wood Mala Bracelet for Meditation",
+      "meta_description": "Experience the sublime essence of wood mala beads with our 8mm Mysore Sandalwood Wood Mala Bracelet. Authentic sandalwood for meditation and spiritual practice.",
+      "featured": 1,
+      "sort_order": 5,
+      "created_at": "2026-10-28T10:46:06.348Z",
+      "category_name": "Meditation Tools",
+      "image_list": [
+        "/uploads/products/sandalwood-mala-bracelet.webp"
+      ],
+      "primary_image": "/uploads/products/sandalwood-mala-bracelet.webp"
+    }
+  ],
+  "customers": [],
+  "orders": [],
+  "order_items": [],
+  "payment_accounts": [
+    {
+      "id": 1,
+      "name": "PayPal",
+      "type": "paypal",
+      "status": "active",
+      "config": "{\"client_id\":\"\",\"client_secret\":\"\",\"mode\":\"sandbox\"}",
+      "is_default": 1,
+      "sort_order": 1,
+      "created_at": "2026-10-28T10:46:06.332Z",
+      "config_data": {
+        "client_id": "",
+        "client_secret": "",
+        "mode": "sandbox"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Stripe",
+      "type": "stripe",
+      "status": "active",
+      "config": "{\"publishable_key\":\"\",\"secret_key\":\"\",\"webhook_secret\":\"\"}",
+      "is_default": 0,
+      "sort_order": 2,
+      "created_at": "2026-10-28T10:46:06.335Z",
+      "config_data": {
+        "publishable_key": "",
+        "secret_key": "",
+        "webhook_secret": ""
+      }
+    },
+    {
+      "id": 3,
+      "name": "TestPay",
+      "type": "paypal",
+      "status": "active",
+      "config": "{\"client_id\":\"test123\",\"client_secret\":\"secret456\",\"mode\":\"sandbox\"}",
+      "is_default": 0,
+      "sort_order": 5,
+      "created_at": "2026-10-28T10:51:31.232Z",
+      "config_data": {
+        "client_id": "test123",
+        "client_secret": "secret456",
+        "mode": "sandbox"
+      }
+    },
+    {
+      "id": 4,
+      "name": "中国银行收款",
+      "type": "bank",
+      "status": "active",
+      "config": "{\"bank_region\":\"domestic\",\"bank_account_holder\":\"张三\",\"bank_account_number\":\"6222021234567890\",\"bank_name\":\"中国工商银行\",\"bank_branch\":\"北京朝阳支行\",\"bank_swift_code\":\"\",\"bank_iban\":\"\",\"bank_currency\":\"CNY\"}",
+      "is_default": 0,
+      "sort_order": 3,
+      "created_at": "2026-10-28T11:34:29.712Z"
+    },
+    {
+      "id": 5,
+      "name": "International Bank",
+      "type": "bank",
+      "status": "active",
+      "config": "{\"bank_region\":\"international\",\"bank_account_holder\":\"John Doe\",\"bank_account_number\":\"000123456789\",\"bank_name\":\"Bank of America\",\"bank_branch\":\"Main Street\",\"bank_swift_code\":\"BOFAUS3N\",\"bank_iban\":\"\",\"bank_currency\":\"USD\"}",
+      "is_default": 0,
+      "sort_order": 4,
+      "created_at": "2026-10-28T11:34:42.466Z"
+    }
+  ],
+  "withdrawal_accounts": [
+    {
+      "id": 1,
+      "name": "MyBank",
+      "type": "bank",
+      "account_holder": "John",
+      "account_number": "123456",
+      "bank_name": "TestBank",
+      "bank_branch": "",
+      "swift_code": "",
+      "iban": "",
+      "paypal_email": "",
+      "wallet_address": "",
+      "currency": "USD",
+      "status": "active",
+      "is_default": 0,
+      "notes": "",
+      "created_at": "2026-10-28T10:51:32.239Z"
+    }
+  ],
+  "shipments": [],
+  "shipment_tracking": [],
+  "settings": {
+    "store_name": "Word0001 Store",
+    "store_email": "support@word0001.com",
+    "store_phone": "",
+    "store_address": "",
+    "store_currency": "USD",
+    "store_currency_symbol": "$",
+    "store_logo": "",
+    "store_favicon": "",
+    "store_description": "Your trusted online store for quality healing crystals, meditation tools, and spiritual jewelry.",
+    "store_footer_text": "© 2026 Word0001 Store. All rights reserved.",
+    "social_facebook": "",
+    "social_twitter": "",
+    "social_instagram": "",
+    "social_youtube": "",
+    "social_tiktok": "",
+    "homepage_title": "Welcome to Word0001 Store",
+    "homepage_banner": "",
+    "free_shipping_threshold": "50",
+    "flat_shipping_rate": "5.99",
+    "tax_rate": "0",
+    "announcement_bar": "Free shipping on orders over $50!",
+    "announcement_enabled": "1"
+  },
+  "counters": {
+    "users": 1,
+    "categories": 4,
+    "products": 5,
+    "customers": 0,
+    "orders": 0,
+    "order_items": 0,
+    "payment_accounts": 5,
+    "withdrawal_accounts": 1,
+    "shipments": 0,
+    "shipment_tracking": 0
+  }
+}

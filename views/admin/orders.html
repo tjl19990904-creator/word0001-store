@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>订单管理 - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar" id="sidebar"></aside>
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">订单管理</div>
+        <div class="topbar-actions">
+          <div class="admin-user"><div class="admin-avatar">A</div><span>admin</span></div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+      <div class="admin-content">
+        <div class="admin-card">
+          <div class="admin-card-header"><h3>订单列表</h3></div>
+
+          <div class="filters-bar">
+            <form method="GET" action="/admin/orders" style="display:flex; gap:8px; flex:1;">
+              <input type="text" name="search" placeholder="按订单号、邮箱、姓名搜索..." value="{{data.search}}" class="search-input">
+              <select name="status" id="status-filter" onchange="this.form.submit()">
+                <option value="all">全部状态</option>
+                <option value="pending">待处理</option>
+                <option value="processing">处理中</option>
+                <option value="shipped">已发货</option>
+                <option value="delivered">已送达</option>
+                <option value="cancelled">已取消</option>
+              </select>
+              <button type="submit" class="btn-admin btn-admin-secondary btn-admin-sm">搜索</button>
+            </form>
+            <a href="/admin/orders" class="btn-admin btn-admin-secondary btn-admin-sm">重置</a>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>订单号</th><th>客户</th><th>日期</th>
+                  <th>金额</th><th>状态</th><th>付款状态</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="orders-table"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/admin.js"></script>
+  <script>
+    renderSidebar('orders');
+    const orders = {{data:json:orders}};
+    const currentPage = {{data.currentPage}};
+    const totalPages = {{data.totalPages}};
+    const search = "{{data.search}}";
+    const statusFilter = "{{data.status}}";
+
+    // 状态翻译映射
+    const statusMap = {
+      'pending': '待处理',
+      'processing': '处理中',
+      'shipped': '已发货',
+      'delivered': '已送达',
+      'cancelled': '已取消'
+    };
+    const payStatusMap = {
+      'unpaid': '未付款',
+      'pending': '待付款',
+      'paid': '已付款',
+      'refunded': '已退款',
+      'failed': '付款失败'
+    };
+
+    // Fix status filter select
+    document.querySelectorAll('select[name="status"] option').forEach(opt => {
+      opt.selected = opt.value === statusFilter;
+    });
+
+    const tbody = document.getElementById('orders-table');
+    if (orders.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">暂无订单。</td></tr>';
+    } else {
+      tbody.innerHTML = orders.map(o => `
+        <tr>
+          <td><strong>${o.order_number}</strong></td>
+          <td>${o.customer_name}<br><span style="font-size:12px;color:#64748b;">${o.customer_email}</span></td>
+          <td>${new Date(o.created_at).toLocaleDateString()}</td>
+          <td>$${o.total.toFixed(2)}</td>
+          <td><span class="badge ${o.status === 'delivered' ? 'badge-success' : o.status === 'shipped' ? 'badge-info' : o.status === 'cancelled' ? 'badge-danger' : 'badge-warning'}">${statusMap[o.status] || o.status}</span></td>
+          <td><span class="badge ${o.payment_status === 'paid' ? 'badge-success' : o.payment_status === 'refunded' ? 'badge-danger' : 'badge-secondary'}">${payStatusMap[o.payment_status] || o.payment_status}</span></td>
+          <td><a href="/admin/orders/${o.id}" class="action-btn">查看</a></td>
+        </tr>
+      `).join('');
+    }
+
+    // Pagination
+    const pagEl = document.getElementById('pagination');
+    if (pagEl && totalPages > 1) {
+      let html = '';
+      for (let i = 1; i <= totalPages; i++) {
+        const params = new URLSearchParams();
+        if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
+        if (search) params.set('search', search);
+        params.set('page', i);
+        html += `<a href="/admin/orders?${params.toString()}" class="${i === currentPage ? 'active' : ''}">${i}</a>`;
+      }
+      pagEl.innerHTML = html;
+    }
+  </script>
+</body>
+</html>

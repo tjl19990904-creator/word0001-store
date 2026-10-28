@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>提款账户管理 - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar" id="sidebar"></aside>
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">提款账户管理</div>
+        <div class="topbar-actions">
+          <div class="admin-user"><div class="admin-avatar">A</div><span>admin</span></div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+      <div class="admin-content">
+        
+        <!-- Add New Withdrawal Account -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>+ 添加提款账户</h3>
+          </div>
+          <form method="POST" action="/admin/withdrawal-accounts/create">
+            <div class="form-row">
+              <div class="form-group">
+                <label>账户名称 *</label>
+                <input type="text" name="name" placeholder="例如 我的银行账户、我的 PayPal" required>
+              </div>
+              <div class="form-group">
+                <label>类型 *</label>
+                <select name="type" id="wd-type" onchange="toggleWdFields()">
+                  <option value="bank">银行转账</option>
+                  <option value="paypal">PayPal</option>
+                  <option value="crypto">加密货币</option>
+                  <option value="other">其他</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Bank fields -->
+            <div id="wd-bank" class="wd-section">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>账户持有人姓名</label>
+                  <input type="text" name="account_holder" placeholder="张三">
+                </div>
+                <div class="form-group">
+                  <label>账号</label>
+                  <input type="text" name="account_number" placeholder="000123456789">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>银行名称</label>
+                  <input type="text" name="bank_name" placeholder="例如 中国银行">
+                </div>
+                <div class="form-group">
+                  <label>支行名称</label>
+                  <input type="text" name="bank_branch" placeholder="例如 北京分行">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>SWIFT 代码</label>
+                  <input type="text" name="swift_code" placeholder="BOFAUS3N">
+                </div>
+                <div class="form-group">
+                  <label>IBAN</label>
+                  <input type="text" name="iban" placeholder="GB29 NWBK 6016 1331 9268 19">
+                </div>
+              </div>
+            </div>
+
+            <!-- PayPal fields -->
+            <div id="wd-paypal" class="wd-section" style="display:none;">
+              <div class="form-group">
+                <label>PayPal 邮箱</label>
+                <input type="email" name="paypal_email" placeholder="your@email.com">
+              </div>
+            </div>
+
+            <!-- Crypto fields -->
+            <div id="wd-crypto" class="wd-section" style="display:none;">
+              <div class="form-group">
+                <label>钱包地址</label>
+                <input type="text" name="wallet_address" placeholder="0x...">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>货币</label>
+                <select name="currency">
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="CNY">CNY</option>
+                  <option value="JPY">JPY</option>
+                  <option value="USDT">USDT</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>状态</label>
+                <select name="status">
+                  <option value="active">启用</option>
+                  <option value="inactive">停用</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>备注（可选）</label>
+              <textarea name="notes" rows="2" placeholder="关于此账户的备注信息..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" name="is_default" value="1" style="width:auto;">
+                设为默认提款账户
+              </label>
+            </div>
+
+            <button type="submit" class="btn-admin btn-admin-primary btn-admin-lg">添加提款账户</button>
+          </form>
+        </div>
+
+        <!-- Existing Withdrawal Accounts -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>提款账户列表</h3>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>名称</th>
+                  <th>类型</th>
+                  <th>持有人/邮箱</th>
+                  <th>账号/钱包</th>
+                  <th>银行</th>
+                  <th>货币</th>
+                  <th>状态</th>
+                  <th>默认</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="wd-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="edit-section"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+  <script>
+    renderSidebar('withdrawal-accounts');
+    const accounts = {{data:json:accounts}};
+
+    const statusMap = {
+      'active': '启用',
+      'inactive': '停用'
+    };
+    const typeMap = {
+      'bank': '银行转账',
+      'paypal': 'PayPal',
+      'crypto': '加密货币',
+      'other': '其他'
+    };
+
+    function toggleWdFields() {
+      const type = document.getElementById('wd-type').value;
+      document.querySelectorAll('.wd-section').forEach(s => s.style.display = 'none');
+      const section = document.getElementById('wd-' + type);
+      if (section) section.style.display = 'block';
+    }
+
+    // Render accounts
+    const tbody = document.getElementById('wd-table');
+    if (accounts.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:20px;">暂未配置提款账户。</td></tr>';
+    } else {
+      tbody.innerHTML = accounts.map(a => {
+        let holder = a.account_holder || a.paypal_email || '-';
+        let account = a.account_number || a.wallet_address || a.iban || '-';
+        let bank = a.bank_name || '-';
+        if (a.type === 'paypal') { holder = a.paypal_email || '-'; account = '-'; bank = '-'; }
+        if (a.type === 'crypto') { holder = '-'; account = a.wallet_address || '-'; bank = '-'; }
+        
+        return `
+          <tr>
+            <td>${a.id}</td>
+            <td><strong>${a.name}</strong></td>
+            <td><span class="badge badge-info">${typeMap[a.type] || a.type}</span></td>
+            <td>${holder}</td>
+            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;">${account}</td>
+            <td>${bank}</td>
+            <td>${a.currency}</td>
+            <td><span class="badge ${a.status === 'active' ? 'badge-success' : 'badge-secondary'}">${statusMap[a.status] || a.status}</span></td>
+            <td>${a.is_default ? '<span class="badge badge-success">默认</span>' : '-'}</td>
+            <td>
+              <button class="action-btn" onclick="editWd(${a.id})">编辑</button>
+              <form method="POST" action="/admin/withdrawal-accounts/${a.id}/delete" id="del-wd-${a.id}" style="display:inline;">
+                <button type="button" class="action-btn danger" onclick="confirmDelete('del-wd-${a.id}')">删除</button>
+              </form>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function editWd(id) {
+      const a = accounts.find(x => x.id === id);
+      if (!a) return;
+
+      const section = document.getElementById('edit-section');
+      section.innerHTML = `
+        <div class="admin-card" style="border:2px solid #4f46e5;">
+          <div class="admin-card-header">
+            <h3>编辑提款账户：${a.name}</h3>
+            <button class="btn-admin btn-admin-secondary btn-admin-sm" onclick="document.getElementById('edit-section').innerHTML=''">取消</button>
+          </div>
+          <form method="POST" action="/admin/withdrawal-accounts/${a.id}/update">
+            <div class="form-row">
+              <div class="form-group">
+                <label>账户名称 *</label>
+                <input type="text" name="name" value="${a.name}" required>
+              </div>
+              <div class="form-group">
+                <label>类型 *</label>
+                <select name="type">
+                  <option value="bank" ${a.type === 'bank' ? 'selected' : ''}>银行转账</option>
+                  <option value="paypal" ${a.type === 'paypal' ? 'selected' : ''}>PayPal</option>
+                  <option value="crypto" ${a.type === 'crypto' ? 'selected' : ''}>加密货币</option>
+                  <option value="other" ${a.type === 'other' ? 'selected' : ''}>其他</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>账户持有人姓名</label>
+                <input type="text" name="account_holder" value="${a.account_holder || ''}">
+              </div>
+              <div class="form-group">
+                <label>账号</label>
+                <input type="text" name="account_number" value="${a.account_number || ''}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>银行名称</label>
+                <input type="text" name="bank_name" value="${a.bank_name || ''}">
+              </div>
+              <div class="form-group">
+                <label>支行名称</label>
+                <input type="text" name="bank_branch" value="${a.bank_branch || ''}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>SWIFT 代码</label>
+                <input type="text" name="swift_code" value="${a.swift_code || ''}">
+              </div>
+              <div class="form-group">
+                <label>IBAN</label>
+                <input type="text" name="iban" value="${a.iban || ''}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>PayPal 邮箱</label>
+                <input type="email" name="paypal_email" value="${a.paypal_email || ''}">
+              </div>
+              <div class="form-group">
+                <label>钱包地址</label>
+                <input type="text" name="wallet_address" value="${a.wallet_address || ''}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>货币</label>
+                <select name="currency">
+                  <option value="USD" ${a.currency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="EUR" ${a.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+                  <option value="GBP" ${a.currency === 'GBP' ? 'selected' : ''}>GBP</option>
+                  <option value="CNY" ${a.currency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="JPY" ${a.currency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="USDT" ${a.currency === 'USDT' ? 'selected' : ''}>USDT</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>状态</label>
+                <select name="status">
+                  <option value="active" ${a.status === 'active' ? 'selected' : ''}>启用</option>
+                  <option value="inactive" ${a.status === 'inactive' ? 'selected' : ''}>停用</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>备注</label>
+              <textarea name="notes" rows="2">${a.notes || ''}</textarea>
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" name="is_default" value="1" style="width:auto;" ${a.is_default ? 'checked' : ''}>
+                设为默认提款账户
+              </label>
+            </div>
+            <button type="submit" class="btn-admin btn-admin-primary btn-admin-lg">更新提款账户</button>
+          </form>
+        </div>
+      `;
+      section.scrollIntoView({behavior:'smooth'});
+    }
+  </script>
+</body>
+</html>

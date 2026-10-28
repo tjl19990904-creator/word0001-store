@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{settings.store_name}} - {{settings.homepage_title}}</title>
+  <meta name="description" content="{{settings.store_description}}">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Announcement Bar -->
+  <div class="announcement-bar">{{settings.announcement_bar}}</div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">{{settings.store_name}}</a>
+      <nav>
+        <ul class="nav-menu">
+          <li><a href="/">Home</a></li>
+          <li><a href="/products">Products</a></li>
+          <li><a href="/track-order">Track Order</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/contact">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <a href="/cart" class="cart-link">
+          <span>Cart</span>
+          <span class="cart-count" id="cart-count" style="display:none;">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>{{settings.homepage_title}}</h1>
+    <p>{{settings.store_description}}</p>
+    <a href="/products" class="btn-white">Shop Now</a>
+  </section>
+
+  <!-- Products Section -->
+  <div class="container">
+    <div class="section-title">
+      <h2>Featured Products</h2>
+      <p>Discover our handpicked selection of quality items</p>
+    </div>
+
+    <div class="product-grid" id="product-grid">
+    </div>
+
+    <div style="text-align:center; margin: 40px 0;">
+      <a href="/products" class="btn btn-outline btn-lg">View All Products</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>{{settings.store_name}}</h4>
+        <p style="font-size:14px; color:#aaa;">{{settings.store_description}}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <a href="/">Home</a>
+        <a href="/products">Products</a>
+        <a href="/track-order">Track Order</a>
+        <a href="/about">About Us</a>
+        <a href="/contact">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h4>Customer Service</h4>
+        <a href="/contact">Contact Us</a>
+        <a href="/track-order">Order Tracking</a>
+        <p style="font-size:14px; color:#aaa; margin-top:8px;">Email: {{settings.store_email}}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Follow Us</h4>
+        <a href="#">Facebook</a>
+        <a href="#">Twitter</a>
+        <a href="#">Instagram</a>
+        <a href="#">YouTube</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      {{settings.store_footer_text}}
+    </div>
+  </footer>
+
+  <script src="/js/store.js"></script>
+  <script>
+    const products = {{data:json:products}};
+    const grid = document.getElementById('product-grid');
+    if (grid) {
+      if (products.length > 0) {
+        grid.innerHTML = products.map(p => `
+          <div class="product-card">
+            ${p.compare_price ? '<span class="badge sale">SALE</span>' : ''}
+            <div class="product-image">
+              <a href="/products/${p.slug}">
+                <img src="${p.primary_image}" alt="${p.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext x=%22150%22 y=%22150%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2216%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+              </a>
+            </div>
+            <div class="product-info">
+              <div class="product-name"><a href="/products/${p.slug}">${p.name}</a></div>
+              ${p.short_description ? `<div class="product-short-desc">${p.short_description}</div>` : ''}
+              <div style="margin-bottom:12px;">
+                <span class="product-price">$${p.price.toFixed(2)}</span>
+                ${p.compare_price ? `<span class="compare-price">$${p.compare_price.toFixed(2)}</span>` : ''}
+              </div>
+              <button class="btn-add-cart" onclick="addToCart(${p.id})">Add to Cart</button>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        grid.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:#999; padding:40px;">No products available yet. Please check back soon!</p>';
+      }
+    }
+  </script>
+</body>
+</html>

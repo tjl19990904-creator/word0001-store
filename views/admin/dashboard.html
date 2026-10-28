@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>仪表盘 - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="sidebar"></aside>
+
+    <!-- Main -->
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">仪表盘</div>
+        <div class="topbar-actions">
+          <div class="admin-user">
+            <div class="admin-avatar">A</div>
+            <span>admin</span>
+          </div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+
+      <div class="admin-content">
+        <!-- Stats -->
+        <div class="stats-grid" id="stats-grid"></div>
+
+        <!-- Recent Orders -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>最近订单</h3>
+            <a href="/admin/orders" class="btn-admin btn-admin-secondary btn-admin-sm">查看全部</a>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>订单号</th>
+                  <th>客户</th>
+                  <th>日期</th>
+                  <th>金额</th>
+                  <th>状态</th>
+                  <th>付款状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="recent-orders"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Top Products -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>热销产品</h3>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>产品名称</th>
+                  <th>已售数量</th>
+                  <th>销售额</th>
+                </tr>
+              </thead>
+              <tbody id="top-products"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+  <script>
+    // Sidebar
+    renderSidebar('dashboard');
+    
+    const stats = {{data:json:stats}};
+    const recentOrders = {{data:json:recentOrders}};
+    const topProducts = {{data:json:topProducts}};
+
+    // 状态翻译映射
+    const statusMap = {
+      'pending': '待处理',
+      'processing': '处理中',
+      'shipped': '已发货',
+      'delivered': '已送达',
+      'cancelled': '已取消'
+    };
+    const payStatusMap = {
+      'unpaid': '未付款',
+      'pending': '待付款',
+      'paid': '已付款',
+      'refunded': '已退款',
+      'failed': '付款失败'
+    };
+
+    // Stats
+    const statsGrid = document.getElementById('stats-grid');
+    statsGrid.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-icon primary">&#128722;</div>
+        <div class="stat-label">订单总数</div>
+        <div class="stat-value">${stats.totalOrders}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon warning">&#9203;</div>
+        <div class="stat-label">待处理订单</div>
+        <div class="stat-value">${stats.pendingOrders}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon success">$</div>
+        <div class="stat-label">总收入</div>
+        <div class="stat-value">$${parseFloat(stats.totalRevenue).toFixed(2)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon info">&#128230;</div>
+        <div class="stat-label">产品总数</div>
+        <div class="stat-value">${stats.totalProducts}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon info">&#128101;</div>
+        <div class="stat-label">客户数量</div>
+        <div class="stat-value">${stats.totalCustomers}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon success">&#128666;</div>
+        <div class="stat-label">已发货订单</div>
+        <div class="stat-value">${stats.shippedOrders}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon danger">&#9888;</div>
+        <div class="stat-label">低库存</div>
+        <div class="stat-value">${stats.lowStock}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon primary">&#128179;</div>
+        <div class="stat-label">收款账户</div>
+        <div class="stat-value">${stats.activePaymentAccounts}</div>
+      </div>
+    `;
+
+    // Recent orders
+    const ordersEl = document.getElementById('recent-orders');
+    if (recentOrders.length === 0) {
+      ordersEl.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">暂无订单。</td></tr>';
+    } else {
+      ordersEl.innerHTML = recentOrders.map(o => `
+        <tr>
+          <td><strong>${o.order_number}</strong></td>
+          <td>${o.customer_name}<br><span style="font-size:12px; color:#64748b;">${o.customer_email}</span></td>
+          <td>${new Date(o.created_at).toLocaleDateString()}</td>
+          <td>$${o.total.toFixed(2)}</td>
+          <td><span class="badge ${o.status === 'delivered' ? 'badge-success' : o.status === 'shipped' ? 'badge-info' : o.status === 'cancelled' ? 'badge-danger' : 'badge-warning'}">${statusMap[o.status] || o.status}</span></td>
+          <td><span class="badge ${o.payment_status === 'paid' ? 'badge-success' : 'badge-secondary'}">${payStatusMap[o.payment_status] || o.payment_status}</span></td>
+          <td><a href="/admin/orders/${o.id}" class="action-btn">查看</a></td>
+        </tr>
+      `).join('');
+    }
+
+    // Top products
+    const topEl = document.getElementById('top-products');
+    if (topProducts.length === 0) {
+      topEl.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#999; padding:20px;">暂无销售数据。</td></tr>';
+    } else {
+      topEl.innerHTML = topProducts.map(p => `
+        <tr>
+          <td><strong>${p.product_name}</strong></td>
+          <td>${p.total_sold}</td>
+          <td>$${p.revenue.toFixed(2)}</td>
+        </tr>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

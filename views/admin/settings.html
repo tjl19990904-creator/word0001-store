@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>店铺设置 - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar" id="sidebar"></aside>
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">店铺设置</div>
+        <div class="topbar-actions">
+          <div class="admin-user"><div class="admin-avatar">A</div><span>admin</span></div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+      <div class="admin-content">
+        <div id="save-msg"></div>
+
+        <form method="POST" action="/admin/settings">
+          <!-- Store Info -->
+          <div class="admin-card">
+            <div class="admin-card-header"><h3>店铺信息</h3></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>店铺名称</label>
+                <input type="text" name="store_name" value="{{settings.store_name}}">
+              </div>
+              <div class="form-group">
+                <label>联系邮箱</label>
+                <input type="email" name="store_email" value="{{settings.store_email}}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>联系电话</label>
+                <input type="text" name="store_phone" value="{{settings.store_phone}}">
+              </div>
+              <div class="form-group">
+                <label>店铺地址</label>
+                <input type="text" name="store_address" value="{{settings.store_address}}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>店铺描述</label>
+              <textarea name="store_description" rows="2">{{settings.store_description}}</textarea>
+            </div>
+            <div class="form-group">
+              <label>页脚文字</label>
+              <input type="text" name="store_footer_text" value="{{settings.store_footer_text}}">
+            </div>
+          </div>
+
+          <!-- Homepage -->
+          <div class="admin-card">
+            <div class="admin-card-header"><h3>首页设置</h3></div>
+            <div class="form-group">
+              <label>首页标题</label>
+              <input type="text" name="homepage_title" value="{{settings.homepage_title}}">
+            </div>
+            <div class="form-group">
+              <label>公告栏内容</label>
+              <input type="text" name="announcement_bar" value="{{settings.announcement_bar}}">
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" name="announcement_enabled" value="1" style="width:auto;" id="ann-check">
+                启用公告栏
+              </label>
+            </div>
+          </div>
+
+          <!-- Shipping & Tax -->
+          <div class="admin-card">
+            <div class="admin-card-header"><h3>运费与税费</h3></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>免运费门槛 ($)</label>
+                <input type="number" name="free_shipping_threshold" step="0.01" value="{{settings.free_shipping_threshold}}">
+              </div>
+              <div class="form-group">
+                <label>固定运费 ($)</label>
+                <input type="number" name="flat_shipping_rate" step="0.01" value="{{settings.flat_shipping_rate}}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>税率 (%)</label>
+              <input type="number" name="tax_rate" step="0.01" value="{{settings.tax_rate}}" placeholder="0 = 无税">
+            </div>
+          </div>
+
+          <!-- Currency -->
+          <div class="admin-card">
+            <div class="admin-card-header"><h3>货币设置</h3></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>货币代码</label>
+                <select name="store_currency" id="currency-select">
+                  <option value="USD">USD - 美元</option>
+                  <option value="EUR">EUR - 欧元</option>
+                  <option value="GBP">GBP - 英镑</option>
+                  <option value="CNY">CNY - 人民币</option>
+                  <option value="JPY">JPY - 日元</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>货币符号</label>
+                <input type="text" name="store_currency_symbol" value="{{settings.store_currency_symbol}}">
+              </div>
+            </div>
+          </div>
+
+          <!-- Social Media -->
+          <div class="admin-card">
+            <div class="admin-card-header"><h3>社交媒体</h3></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Facebook 链接</label>
+                <input type="text" name="social_facebook" value="{{settings.social_facebook}}">
+              </div>
+              <div class="form-group">
+                <label>Twitter 链接</label>
+                <input type="text" name="social_twitter" value="{{settings.social_twitter}}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Instagram 链接</label>
+                <input type="text" name="social_instagram" value="{{settings.social_instagram}}">
+              </div>
+              <div class="form-group">
+                <label>YouTube 链接</label>
+                <input type="text" name="social_youtube" value="{{settings.social_youtube}}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>TikTok 链接</label>
+              <input type="text" name="social_tiktok" value="{{settings.social_tiktok}}">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-admin btn-admin-primary btn-admin-lg">保存设置</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script src="/js/admin.js"></script>
+  <script>
+    renderSidebar('settings');
+    
+    // Fix currency select
+    const currencyVal = "{{settings.store_currency}}";
+    document.querySelectorAll('select[name="store_currency"] option').forEach(opt => {
+      opt.selected = opt.value === currencyVal;
+    });
+
+    // Fix announcement checkbox
+    if ("{{settings.announcement_enabled}}" === "1") {
+      document.getElementById('ann-check').checked = true;
+    }
+
+    // Check for save success
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('saved') === '1' || "{{data.saved}}" === 'true') {
+      document.getElementById('save-msg').innerHTML = '<div class="badge badge-success" style="padding:12px 20px;font-size:14px;display:block;margin-bottom:16px;">设置保存成功！</div>';
+    }
+  </script>
+</body>
+</html>

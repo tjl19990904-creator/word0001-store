@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>订单详情 - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar" id="sidebar"></aside>
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">订单详情</div>
+        <div class="topbar-actions">
+          <div class="admin-user"><div class="admin-avatar">A</div><span>admin</span></div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+      <div class="admin-content">
+        <a href="/admin/orders" class="btn-admin btn-admin-secondary btn-admin-sm" style="margin-bottom:16px;">&larr; 返回订单列表</a>
+
+        <div class="order-detail-grid">
+          <!-- Left: Order Info -->
+          <div>
+            <!-- Order Status Update -->
+            <div class="admin-card">
+              <div class="admin-card-header"><h3>订单状态</h3></div>
+              <form method="POST" action="/admin/orders/{{data.order.id}}/status" style="display:flex; gap:12px; flex-wrap:wrap;">
+                <div class="form-group" style="flex:1; margin-bottom:0;">
+                  <label>订单状态</label>
+                  <select name="status" id="status-select"></select>
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom:0;">
+                  <label>付款状态</label>
+                  <select name="payment_status" id="payment-select"></select>
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                  <button type="submit" class="btn-admin btn-admin-primary">更新</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Order Items -->
+            <div class="admin-card">
+              <div class="admin-card-header"><h3>订单商品</h3></div>
+              <div id="items-container"></div>
+            </div>
+
+            <!-- Shipping Info -->
+            <div class="admin-card">
+              <div class="admin-card-header"><h3>收货信息</h3></div>
+              <div id="shipping-info"></div>
+            </div>
+          </div>
+
+          <!-- Right: Summary -->
+          <div>
+            <div class="admin-card">
+              <div class="admin-card-header"><h3>订单摘要</h3></div>
+              <div id="order-summary"></div>
+            </div>
+
+            <div class="admin-card" id="shipment-card"></div>
+
+            <div class="admin-card" id="tracking-card"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/admin.js"></script>
+  <script>
+    renderSidebar('orders');
+    const order = {{data:json:order}};
+    const orderItems = {{data:json:orderItems}};
+    const shipment = {{data:json:shipment}};
+    const trackingHistory = {{data:json:trackingHistory}};
+    const paymentAccount = {{data:json:paymentAccount}};
+
+    // 状态翻译映射
+    const statusMap = {
+      'pending': '待处理',
+      'processing': '处理中',
+      'shipped': '已发货',
+      'delivered': '已送达',
+      'cancelled': '已取消',
+      'in_transit': '运输中',
+      'returned': '已退回',
+      'out_for_delivery': '派送中'
+    };
+    const payStatusMap = {
+      'unpaid': '未付款',
+      'pending': '待付款',
+      'paid': '已付款',
+      'refunded': '已退款',
+      'failed': '付款失败'
+    };
+
+    // Status select
+    const statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const statusSelect = document.getElementById('status-select');
+    statusSelect.innerHTML = statuses.map(s => `<option value="${s}" ${order.status === s ? 'selected' : ''}>${statusMap[s] || s}</option>`).join('');
+
+    // Payment select
+    const payStatuses = ['unpaid', 'pending', 'paid', 'refunded', 'failed'];
+    const paySelect = document.getElementById('payment-select');
+    paySelect.innerHTML = payStatuses.map(s => `<option value="${s}" ${order.payment_status === s ? 'selected' : ''}>${payStatusMap[s] || s}</option>`).join('');
+
+    // Order summary
+    document.getElementById('order-summary').innerHTML = `
+      <div style="margin-bottom:12px;"><strong>订单编号：</strong><br>${order.order_number}</div>
+      <div style="margin-bottom:12px;"><strong>下单时间：</strong><br>${new Date(order.created_at).toLocaleString()}</div>
+      <div style="margin-bottom:12px;"><strong>客户信息：</strong><br>${order.customer_name}<br>${order.customer_email}<br>${order.customer_phone || ''}</div>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span>商品小计：</span><span>$${order.subtotal.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span>运费：</span><span>$${order.shipping_cost.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span>税费：</span><span>$${order.tax.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:1px solid #e2e8f0;padding-top:8px;"><span>总计：</span><span>$${order.total.toFixed(2)}</span></div>
+      ${paymentAccount ? `<div style="margin-top:12px;padding:8px;background:#f1f5f9;border-radius:6px;"><strong>支付方式：</strong> ${paymentAccount.name} (${paymentAccount.type})</div>` : `<div style="margin-top:12px;"><strong>支付方式：</strong> ${order.payment_method || '无'}</div>`}
+      ${order.notes ? `<div style="margin-top:12px;padding:8px;background:#fef3c7;border-radius:6px;"><strong>备注：</strong> ${order.notes}</div>` : ''}
+    `;
+
+    // Order items
+    document.getElementById('items-container').innerHTML = `
+      <table class="admin-table">
+        <thead><tr><th>图片</th><th>商品</th><th>单价</th><th>数量</th><th>小计</th></tr></thead>
+        <tbody>
+          ${orderItems.map(item => `
+            <tr>
+              <td>${item.product_image ? `<img src="${item.product_image}" class="product-thumb">` : '-'}</td>
+              <td>${item.product_name}</td>
+              <td>$${item.price.toFixed(2)}</td>
+              <td>${item.quantity}</td>
+              <td>$${item.total.toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    // Shipping info
+    document.getElementById('shipping-info').innerHTML = `
+      <div style="margin-bottom:8px;"><strong>收件人：</strong><br>${order.shipping_address}</div>
+      <div style="margin-bottom:8px;"><strong>城市：</strong> ${order.shipping_city}</div>
+      <div style="margin-bottom:8px;"><strong>省份/州：</strong> ${order.shipping_state}</div>
+      <div style="margin-bottom:8px;"><strong>邮编：</strong> ${order.shipping_zip}</div>
+      <div><strong>国家：</strong> ${order.shipping_country}</div>
+    `;
+
+    // Shipment card
+    const shipCard = document.getElementById('shipment-card');
+    if (shipment) {
+      shipCard.innerHTML = `
+        <div class="admin-card-header"><h3>物流信息</h3>
+          <a href="/admin/shipments/${shipment.id}" class="btn-admin btn-admin-secondary btn-admin-sm">管理物流</a>
+        </div>
+        <div style="margin-bottom:8px;"><strong>物流单号：</strong> ${shipment.tracking_number || '未设置'}</div>
+        <div style="margin-bottom:8px;"><strong>承运商：</strong> ${shipment.carrier || '未设置'}</div>
+        <div style="margin-bottom:8px;"><strong>状态：</strong> <span class="badge ${shipment.status === 'delivered' ? 'badge-success' : shipment.status === 'shipped' ? 'badge-info' : 'badge-warning'}">${statusMap[shipment.status] || shipment.status}</span></div>
+        ${shipment.shipped_at ? `<div style="margin-bottom:8px;"><strong>发货时间：</strong> ${new Date(shipment.shipped_at).toLocaleString()}</div>` : ''}
+        ${shipment.delivered_at ? `<div style="margin-bottom:8px;"><strong>送达时间：</strong> ${new Date(shipment.delivered_at).toLocaleString()}</div>` : ''}
+      `;
+    } else {
+      shipCard.innerHTML = `
+        <div class="admin-card-header"><h3>物流信息</h3></div>
+        <p style="color:#999;">暂无物流记录。</p>
+      `;
+    }
+
+    // Tracking history
+    const trackCard = document.getElementById('tracking-card');
+    if (trackingHistory && trackingHistory.length > 0) {
+      trackCard.innerHTML = `
+        <div class="admin-card-header"><h3>物流跟踪记录</h3></div>
+        <div class="tracking-timeline">
+          ${trackingHistory.map((e, i) => `
+            <div class="tracking-event ${i === 0 ? 'active' : ''}">
+              <div class="event-status">${statusMap[e.status] || e.status}</div>
+              <div class="event-time">${new Date(e.timestamp).toLocaleString()}</div>
+              ${e.location ? `<div class="event-desc">位置：${e.location}</div>` : ''}
+              ${e.description ? `<div class="event-desc">${e.description}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      trackCard.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

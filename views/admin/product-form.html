@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{data.pageTitle}} - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar" id="sidebar"></aside>
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">{{data.pageTitle}}</div>
+        <div class="topbar-actions">
+          <div class="admin-user"><div class="admin-avatar">A</div><span>admin</span></div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+
+      <div class="admin-content">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>{{data.pageTitle}}</h3>
+            <a href="/admin/products" class="btn-admin btn-admin-secondary btn-admin-sm">返回产品列表</a>
+          </div>
+
+          <form method="POST" action="{{data.isEdit}}" id="product-form" enctype="multipart/form-data">
+            <input type="hidden" id="images-input" name="images" value="{{data.product.images}}">
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>产品名称 *</label>
+                <input type="text" name="name" value="{{data.product.name}}" required>
+              </div>
+              <div class="form-group">
+                <label>SKU 编码</label>
+                <input type="text" name="sku" value="{{data.product.sku}}">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>简短描述</label>
+              <textarea name="short_description" rows="2" placeholder="显示在产品卡片上的简要描述">{{data.product.short_description}}</textarea>
+            </div>
+
+            <div class="form-group">
+              <label>详细描述</label>
+              <textarea name="description" rows="6" placeholder="详细的产品描述">{{data.product.description}}</textarea>
+            </div>
+
+            <div class="form-row-3">
+              <div class="form-group">
+                <label>价格 ($) *</label>
+                <input type="number" name="price" step="0.01" value="{{data.product.price}}" required>
+              </div>
+              <div class="form-group">
+                <label>划线价 ($)</label>
+                <input type="number" name="compare_price" step="0.01" value="{{data.product.compare_price}}" placeholder="用于显示促销原价">
+              </div>
+              <div class="form-group">
+                <label>成本价 ($)</label>
+                <input type="number" name="cost" step="0.01" value="{{data.product.cost}}">
+              </div>
+            </div>
+
+            <div class="form-row-3">
+              <div class="form-group">
+                <label>库存数量 *</label>
+                <input type="number" name="stock" value="{{data.product.stock}}" required>
+              </div>
+              <div class="form-group">
+                <label>重量 (kg)</label>
+                <input type="number" name="weight" step="0.01" value="{{data.product.weight}}">
+              </div>
+              <div class="form-group">
+                <label>尺寸</label>
+                <input type="text" name="dimensions" value="{{data.product.dimensions}}" placeholder="例如 10x10x5cm">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>分类</label>
+                <select name="category_id" id="category-select"></select>
+              </div>
+              <div class="form-group">
+                <label>状态</label>
+                <select name="status" id="status-select">
+                  <option value="active">上架</option>
+                  <option value="draft">草稿</option>
+                  <option value="archived">已归档</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>排序</label>
+                <input type="number" name="sort_order" value="{{data.product.sort_order}}" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;">
+                  <input type="checkbox" name="featured" value="1" style="width:auto;" id="featured-check">
+                  推荐产品
+                </label>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>SEO 标题</label>
+                <input type="text" name="meta_title" value="{{data.product.meta_title}}">
+              </div>
+              <div class="form-group">
+                <label>SEO 描述</label>
+                <input type="text" name="meta_description" value="{{data.product.meta_description}}">
+              </div>
+            </div>
+
+            <!-- Image Upload -->
+            <div class="form-group">
+              <label>产品图片</label>
+              <div class="image-upload-area" onclick="document.getElementById('image-upload-input').click()">
+                <div class="upload-icon">&#128247;</div>
+                <p>点击上传图片（支持 JPG、PNG、GIF、WebP - 每张最大 10MB）</p>
+              </div>
+              <input type="file" id="image-upload-input" accept="image/*" multiple style="display:none;" 
+                     onchange="uploadImages(this, 'image-preview-grid', 'images-input')">
+              <div class="image-preview-grid" id="image-preview-grid"></div>
+            </div>
+
+            <div style="margin-top:30px; display:flex; gap:12px;">
+              <button type="submit" class="btn-admin btn-admin-primary btn-admin-lg">保存产品</button>
+              <a href="/admin/products" class="btn-admin btn-admin-secondary btn-admin-lg">取消</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+  <script>
+    renderSidebar('products');
+    
+    const categories = {{data:json:categories}};
+    const product = {{data:json:product}};
+    const isEdit = {{data.isEdit}};
+
+    // Fix form action
+    const form = document.getElementById('product-form');
+    if (isEdit && product) {
+      form.action = '/admin/products/' + product.id + '/update';
+    } else {
+      form.action = '/admin/products/create';
+    }
+
+    // Populate categories
+    const catSelect = document.getElementById('category-select');
+    catSelect.innerHTML = '<option value="">无分类</option>' + 
+      categories.map(c => `<option value="${c.id}" ${product && product.category_id == c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+
+    // Fix status select
+    if (product && product.status) {
+      document.querySelectorAll('select[name="status"] option').forEach(opt => {
+        opt.selected = false;
+        if (opt.value === product.status) opt.selected = true;
+      });
+    }
+
+    // Fix featured checkbox
+    if (product && product.featured) {
+      document.getElementById('featured-check').checked = true;
+    }
+
+    // Load existing images
+    if (product && product.image_list && product.image_list.length > 0) {
+      const previewGrid = document.getElementById('image-preview-grid');
+      const hiddenInput = document.getElementById('images-input');
+      
+      // Ensure hidden input has correct value
+      hiddenInput.value = JSON.stringify(product.image_list);
+      
+      product.image_list.forEach(url => {
+        const div = document.createElement('div');
+        div.className = 'image-preview';
+        div.innerHTML = `
+          <img src="${url}" alt="Product image">
+          <button type="button" class="remove-img" onclick="removeImage(this, '${url}', 'images-input')">x</button>
+        `;
+        previewGrid.appendChild(div);
+      });
+    } else {
+      // Reset hidden input to empty array
+      document.getElementById('images-input').value = '[]';
+    }
+  </script>
+</body>
+</html>

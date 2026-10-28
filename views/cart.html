@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Cart - {{settings.store_name}}</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="announcement-bar">{{settings.announcement_bar}}</div>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">{{settings.store_name}}</a>
+      <nav><ul class="nav-menu">
+        <li><a href="/">Home</a></li>
+        <li><a href="/products">Products</a></li>
+        <li><a href="/track-order">Track Order</a></li>
+        <li><a href="/about">About</a></li>
+        <li><a href="/contact">Contact</a></li>
+      </ul></nav>
+      <div class="header-actions">
+        <a href="/cart" class="cart-link"><span>Cart</span><span class="cart-count" id="cart-count" style="display:none;">0</span></a>
+      </div>
+    </div>
+  </header>
+
+  <div class="container cart-page">
+    <h1>Shopping Cart</h1>
+    <div id="cart-container"></div>
+  </div>
+
+  <footer class="footer"><div class="footer-bottom">{{settings.store_footer_text}}</div></footer>
+  <script src="/js/store.js"></script>
+  <script>
+    const cartItems = {{data:json:cartItems}};
+    const subtotal = {{data.subtotal}};
+    const shippingCost = {{data.shippingCost}};
+    const total = {{data.total}};
+
+    const container = document.getElementById('cart-container');
+    if (cartItems.length === 0) {
+      container.innerHTML = `
+        <div class="cart-empty">
+          <h2>Your cart is empty</h2>
+          <p style="margin-bottom:20px; color:#999;">Looks like you haven't added anything yet.</p>
+          <a href="/products" class="btn btn-primary btn-lg">Continue Shopping</a>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="cart-items">
+          ${cartItems.map(item => `
+            <div class="cart-item">
+              <img src="${item.primary_image}" alt="${item.name}" 
+                   onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2280%22 height=%2280%22/%3E%3C/svg%3E'">
+              <div>
+                <div class="item-name"><a href="/products/${item.slug}">${item.name}</a></div>
+                <div class="item-price">$${item.price.toFixed(2)}</div>
+              </div>
+              <form method="POST" action="/cart/update" style="display:flex; align-items:center; gap:8px;">
+                <input type="hidden" name="productId" value="${item.id}">
+                <button type="button" onclick="this.nextElementSibling.value=Math.max(1,parseInt(this.nextElementSibling.value)-1)" style="width:28px;height:28px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;border-radius:4px;">-</button>
+                <input type="number" name="quantity" value="${item.quantity}" min="1" style="width:50px; text-align:center; padding:4px; border:1px solid #e0e0e0; border-radius:4px;">
+                <button type="button" onclick="this.previousElementSibling.value=parseInt(this.previousElementSibling.value)+1" style="width:28px;height:28px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;border-radius:4px;">+</button>
+                <button type="submit" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">Update</button>
+              </form>
+              <div class="item-total">$${item.lineTotal.toFixed(2)}</div>
+              <form method="POST" action="/cart/remove" style="display:inline;">
+                <input type="hidden" name="productId" value="${item.id}">
+                <button type="submit" class="remove-btn" style="background:none;border:none;color:#dc3545;font-size:20px;cursor:pointer;">x</button>
+              </form>
+            </div>
+          `).join('')}
+        </div>
+        <div class="cart-summary">
+          <div class="summary-box">
+            <div class="summary-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
+            <div class="summary-row"><span>Shipping</span><span>${shippingCost === 0 ? 'Free' : '$' + shippingCost.toFixed(2)}</span></div>
+            <div class="summary-row summary-total"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+            <div style="margin-top:20px;">
+              <a href="/checkout" class="btn btn-primary btn-block btn-lg">Proceed to Checkout</a>
+            </div>
+            <div style="margin-top:12px; text-align:center;">
+              <a href="/products" style="font-size:14px;">Continue Shopping</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商品分类 - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar" id="sidebar"></aside>
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">商品分类</div>
+        <div class="topbar-actions">
+          <div class="admin-user"><div class="admin-avatar">A</div><span>admin</span></div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+      <div class="admin-content">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>添加新分类</h3>
+          </div>
+          <form method="POST" action="/admin/categories/create">
+            <div class="form-row">
+              <div class="form-group">
+                <label>分类名称 *</label>
+                <input type="text" name="name" required>
+              </div>
+              <div class="form-group">
+                <label>排序</label>
+                <input type="number" name="sort_order" value="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>描述</label>
+              <textarea name="description" rows="2"></textarea>
+            </div>
+            <button type="submit" class="btn-admin btn-admin-primary">添加分类</button>
+          </form>
+        </div>
+
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>分类列表</h3>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr><th>ID</th><th>名称</th><th>描述</th><th>排序</th><th>操作</th></tr>
+              </thead>
+              <tbody id="cat-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Edit modal (inline forms) -->
+        <div id="edit-section"></div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/admin.js"></script>
+  <script>
+    renderSidebar('categories');
+    const categories = {{data:json:categories}};
+    
+    const tbody = document.getElementById('cat-table');
+    if (categories.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:20px;">暂无分类。</td></tr>';
+    } else {
+      tbody.innerHTML = categories.map(c => `
+        <tr>
+          <td>${c.id}</td>
+          <td><strong>${c.name}</strong></td>
+          <td>${c.description || '-'}</td>
+          <td>${c.sort_order}</td>
+          <td>
+            <button class="action-btn" onclick="editCategory(${c.id})">编辑</button>
+            <form method="POST" action="/admin/categories/${c.id}/delete" id="del-cat-${c.id}" style="display:inline;">
+              <button type="button" class="action-btn danger" onclick="confirmDelete('del-cat-${c.id}')">删除</button>
+            </form>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function editCategory(id) {
+      const cat = categories.find(c => c.id === id);
+      if (!cat) return;
+      
+      const section = document.getElementById('edit-section');
+      section.innerHTML = `
+        <div class="admin-card" style="border:2px solid #4f46e5;">
+          <div class="admin-card-header">
+            <h3>编辑分类：${cat.name}</h3>
+            <button class="btn-admin btn-admin-secondary btn-admin-sm" onclick="document.getElementById('edit-section').innerHTML=''">取消</button>
+          </div>
+          <form method="POST" action="/admin/categories/${cat.id}/update">
+            <div class="form-row">
+              <div class="form-group">
+                <label>名称 *</label>
+                <input type="text" name="name" value="${cat.name}" required>
+              </div>
+              <div class="form-group">
+                <label>排序</label>
+                <input type="number" name="sort_order" value="${cat.sort_order}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>描述</label>
+              <textarea name="description" rows="2">${cat.description || ''}</textarea>
+            </div>
+            <button type="submit" class="btn-admin btn-admin-primary">更新</button>
+          </form>
+        </div>
+      `;
+      section.scrollIntoView({behavior:'smooth'});
+    }
+  </script>
+</body>
+</html>

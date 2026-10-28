@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>物流详情 - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar" id="sidebar"></aside>
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">物流详情</div>
+        <div class="topbar-actions">
+          <div class="admin-user"><div class="admin-avatar">A</div><span>admin</span></div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+      <div class="admin-content">
+        <a href="/admin/shipments" class="btn-admin btn-admin-secondary btn-admin-sm" style="margin-bottom:16px;">&larr; 返回物流列表</a>
+
+        <div class="order-detail-grid">
+          <div>
+            <!-- Update Shipment -->
+            <div class="admin-card">
+              <div class="admin-card-header"><h3>更新物流信息</h3></div>
+              <form method="POST" action="/admin/shipments/{{data.shipment.id}}/update">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>物流单号</label>
+                    <input type="text" name="tracking_number" value="{{data.shipment.tracking_number}}" placeholder="例如 1Z999AA10123456784">
+                  </div>
+                  <div class="form-group">
+                    <label>承运商</label>
+                    <select name="carrier" id="carrier-select">
+                      <option value="">选择承运商</option>
+                      <option value="UPS">UPS</option>
+                      <option value="FedEx">FedEx</option>
+                      <option value="USPS">USPS</option>
+                      <option value="DHL">DHL</option>
+                      <option value="EMS">EMS</option>
+                      <option value="TNT">TNT</option>
+                      <option value="Other">其他</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>配送方式</label>
+                    <input type="text" name="shipping_method" value="{{data.shipment.shipping_method}}" placeholder="标准配送、加急配送等">
+                  </div>
+                  <div class="form-group">
+                    <label>状态</label>
+                    <select name="status" id="shipment-status-select">
+                      <option value="pending">待处理</option>
+                      <option value="processing">处理中</option>
+                      <option value="shipped">已发货</option>
+                      <option value="in_transit">运输中</option>
+                      <option value="delivered">已送达</option>
+                      <option value="returned">已退回</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>预计送达日期</label>
+                    <input type="date" name="estimated_delivery" value="{{data.shipment.estimated_delivery}}">
+                  </div>
+                  <div class="form-group">
+                    <label>运费 ($)</label>
+                    <input type="number" name="shipping_cost" step="0.01" value="{{data.shipment.shipping_cost}}" readonly style="background:#f1f5f9;">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>备注</label>
+                  <textarea name="notes" rows="3" placeholder="关于此物流的内部备注...">{{data.shipment.notes}}</textarea>
+                </div>
+                <button type="submit" class="btn-admin btn-admin-primary btn-admin-lg">更新物流信息</button>
+              </form>
+            </div>
+
+            <!-- Order Items -->
+            <div class="admin-card">
+              <div class="admin-card-header"><h3>订单商品</h3></div>
+              <div id="items-container"></div>
+            </div>
+          </div>
+
+          <div>
+            <!-- Shipment Info -->
+            <div class="admin-card">
+              <div class="admin-card-header"><h3>物流信息</h3></div>
+              <div id="ship-info"></div>
+            </div>
+
+            <!-- Add Tracking Event -->
+            <div class="admin-card">
+              <div class="admin-card-header"><h3>添加物流跟踪事件</h3></div>
+              <form method="POST" action="/admin/shipments/{{data.shipment.id}}/tracking">
+                <div class="form-group">
+                  <label>状态</label>
+                  <select name="status">
+                    <option value="info">信息</option>
+                    <option value="pending">待处理</option>
+                    <option value="processing">处理中</option>
+                    <option value="shipped">已发货</option>
+                    <option value="in_transit">运输中</option>
+                    <option value="out_for_delivery">派送中</option>
+                    <option value="delivered">已送达</option>
+                    <option value="exception">异常</option>
+                    <option value="returned">已退回</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>位置</label>
+                  <input type="text" name="location" placeholder="例如 洛杉矶，加利福尼亚州">
+                </div>
+                <div class="form-group">
+                  <label>描述</label>
+                  <textarea name="description" rows="3" placeholder="例如 包裹已到达分拣中心"></textarea>
+                </div>
+                <button type="submit" class="btn-admin btn-admin-primary">添加跟踪事件</button>
+              </form>
+            </div>
+
+            <!-- Tracking History -->
+            <div class="admin-card">
+              <div class="admin-card-header"><h3>物流跟踪记录</h3></div>
+              <div id="tracking-history"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/admin.js"></script>
+  <script>
+    renderSidebar('shipments');
+    const shipment = {{data:json:shipment}};
+    const orderItems = {{data:json:orderItems}};
+    const trackingHistory = {{data:json:trackingHistory}};
+
+    const statusMap = {
+      'pending': '待处理',
+      'processing': '处理中',
+      'shipped': '已发货',
+      'in_transit': '运输中',
+      'delivered': '已送达',
+      'returned': '已退回',
+      'out_for_delivery': '派送中',
+      'exception': '异常',
+      'info': '信息'
+    };
+
+    // Fix carrier select
+    const carrierSelect = document.getElementById('carrier-select');
+    if (shipment && shipment.carrier) {
+      carrierSelect.value = shipment.carrier;
+      // If carrier not in list, add it
+      let found = false;
+      carrierSelect.querySelectorAll('option').forEach(opt => {
+        if (opt.value === shipment.carrier) found = true;
+      });
+      if (!found) {
+        const opt = document.createElement('option');
+        opt.value = shipment.carrier;
+        opt.textContent = shipment.carrier;
+        opt.selected = true;
+        carrierSelect.appendChild(opt);
+      }
+    }
+
+    // Fix status select
+    const statusSelect = document.getElementById('shipment-status-select');
+    if (shipment && shipment.status) {
+      statusSelect.value = shipment.status;
+    }
+
+    // Ship info
+    document.getElementById('ship-info').innerHTML = `
+      <div style="margin-bottom:10px;"><strong>订单号：</strong><br>${shipment.order_number || '无'}</div>
+      <div style="margin-bottom:10px;"><strong>客户：</strong><br>${shipment.customer_name || ''}<br>${shipment.customer_email || ''}</div>
+      <div style="margin-bottom:10px;"><strong>收件地址：</strong><br>${shipment.shipping_address || ''}</div>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0;">
+      <div style="margin-bottom:10px;"><strong>物流单号：</strong><br>${shipment.tracking_number || '未设置'}</div>
+      <div style="margin-bottom:10px;"><strong>承运商：</strong><br>${shipment.carrier || '未设置'}</div>
+      <div style="margin-bottom:10px;"><strong>状态：</strong><br><span class="badge ${shipment.status === 'delivered' ? 'badge-success' : shipment.status === 'shipped' ? 'badge-info' : 'badge-warning'}">${statusMap[shipment.status] || shipment.status}</span></div>
+      ${shipment.shipped_at ? `<div style="margin-bottom:10px;"><strong>发货时间：</strong><br>${new Date(shipment.shipped_at).toLocaleString()}</div>` : ''}
+      ${shipment.delivered_at ? `<div style="margin-bottom:10px;"><strong>送达时间：</strong><br>${new Date(shipment.delivered_at).toLocaleString()}</div>` : ''}
+    `;
+
+    // Order items
+    document.getElementById('items-container').innerHTML = `
+      <table class="admin-table">
+        <thead><tr><th>图片</th><th>商品</th><th>单价</th><th>数量</th><th>小计</th></tr></thead>
+        <tbody>
+          ${orderItems.map(item => `
+            <tr>
+              <td>${item.product_image ? `<img src="${item.product_image}" class="product-thumb">` : '-'}</td>
+              <td>${item.product_name}</td>
+              <td>$${item.price.toFixed(2)}</td>
+              <td>${item.quantity}</td>
+              <td>$${item.total.toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    // Tracking history
+    const trackEl = document.getElementById('tracking-history');
+    if (trackingHistory && trackingHistory.length > 0) {
+      trackEl.innerHTML = `
+        <div class="tracking-timeline">
+          ${trackingHistory.map((e, i) => `
+            <div class="tracking-event ${i === 0 ? 'active' : ''}">
+              <div class="event-status">${statusMap[e.status] || e.status}</div>
+              <div class="event-time">${new Date(e.timestamp).toLocaleString()}</div>
+              ${e.location ? `<div class="event-desc">位置：${e.location}</div>` : ''}
+              ${e.description ? `<div class="event-desc">${e.description}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      trackEl.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">暂无跟踪事件。</p>';
+    }
+  </script>
+</body>
+</html>

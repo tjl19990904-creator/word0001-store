@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>收款账户管理 - {{settings.store_name}} 管理后台</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar" id="sidebar"></aside>
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <div class="page-title">收款账户管理</div>
+        <div class="topbar-actions">
+          <div class="admin-user"><div class="admin-avatar">A</div><span>admin</span></div>
+          <a href="/admin/logout" class="btn-admin btn-admin-secondary btn-admin-sm">退出登录</a>
+        </div>
+      </div>
+      <div class="admin-content">
+        
+        <!-- Add New Payment Account -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>+ 添加收款账户</h3>
+          </div>
+          <form method="POST" action="/admin/payment-accounts/create" id="add-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>账户名称 *</label>
+                <input type="text" name="name" placeholder="例如 PayPal、Stripe、银行卡收款 等" required>
+              </div>
+              <div class="form-group">
+                <label>类型 *</label>
+                <select name="type" id="add-type" onchange="toggleConfigFields('add')">
+                  <option value="paypal">PayPal</option>
+                  <option value="stripe">Stripe</option>
+                  <option value="bank">银行卡</option>
+                  <option value="other">其他</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- PayPal Config -->
+            <div id="add-paypal-config" class="config-section">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>PayPal Client ID</label>
+                  <input type="text" name="client_id" placeholder="PayPal Client ID">
+                </div>
+                <div class="form-group">
+                  <label>PayPal Client Secret</label>
+                  <input type="text" name="client_secret" placeholder="PayPal Client Secret">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>运行模式</label>
+                <select name="mode">
+                  <option value="sandbox">沙盒模式（测试）</option>
+                  <option value="live">正式模式（生产环境）</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Stripe Config -->
+            <div id="add-stripe-config" class="config-section" style="display:none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stripe 公钥</label>
+                  <input type="text" name="publishable_key" placeholder="pk_live_... 或 pk_test_...">
+                </div>
+                <div class="form-group">
+                  <label>Stripe 密钥</label>
+                  <input type="text" name="secret_key" placeholder="sk_live_... 或 sk_test_...">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Webhook 密钥</label>
+                <input type="text" name="webhook_secret" placeholder="whsec_...">
+              </div>
+            </div>
+
+            <!-- Bank Card Config -->
+            <div id="add-bank-config" class="config-section" style="display:none;">
+              <div class="form-group">
+                <label>地区 *</label>
+                <select name="bank_region" id="add-bank-region" onchange="toggleBankRegion('add')">
+                  <option value="domestic">中国国内银行卡</option>
+                  <option value="international">国际银行卡</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>持卡人姓名 *</label>
+                  <input type="text" name="bank_account_holder" placeholder="例如 张三 / John Doe">
+                </div>
+                <div class="form-group">
+                  <label>银行卡号 *</label>
+                  <input type="text" name="bank_account_number" placeholder="银行卡号">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>银行名称 *</label>
+                  <input type="text" name="bank_name" placeholder="例如 中国工商银行 / Bank of America">
+                </div>
+                <div class="form-group">
+                  <label>支行名称</label>
+                  <input type="text" name="bank_branch" placeholder="例如 北京朝阳支行 / Main Street Branch">
+                </div>
+              </div>
+              <!-- International bank fields -->
+              <div id="add-bank-international" style="display:none;">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>SWIFT 代码</label>
+                    <input type="text" name="bank_swift_code" placeholder="例如 BOFAUS3N">
+                  </div>
+                  <div class="form-group">
+                    <label>IBAN</label>
+                    <input type="text" name="bank_iban" placeholder="例如 GB29 NWBK 6016 1331 9268 19">
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>结算货币</label>
+                <select name="bank_currency">
+                  <option value="USD">USD - 美元</option>
+                  <option value="EUR">EUR - 欧元</option>
+                  <option value="GBP">GBP - 英镑</option>
+                  <option value="CNY">CNY - 人民币</option>
+                  <option value="JPY">JPY - 日元</option>
+                  <option value="HKD">HKD - 港币</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Other Config -->
+            <div id="add-other-config" class="config-section" style="display:none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>商户 ID</label>
+                  <input type="text" name="merchant_id">
+                </div>
+                <div class="form-group">
+                  <label>API 密钥</label>
+                  <input type="text" name="api_key">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>附加配置 (JSON)</label>
+                <textarea name="other_config" rows="3" placeholder='{"key": "value"}'></textarea>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>状态</label>
+                <select name="status">
+                  <option value="active">启用</option>
+                  <option value="inactive">停用</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>排序</label>
+                <input type="number" name="sort_order" value="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" name="is_default" value="1" style="width:auto;">
+                设为默认收款账户
+              </label>
+            </div>
+
+            <button type="submit" class="btn-admin btn-admin-primary btn-admin-lg">添加收款账户</button>
+          </form>
+        </div>
+
+        <!-- Existing Payment Accounts -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>收款账户列表</h3>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>名称</th>
+                  <th>类型</th>
+                  <th>状态</th>
+                  <th>默认</th>
+                  <th>排序</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="accounts-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Edit Section -->
+        <div id="edit-section"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+  <script>
+    renderSidebar('payment-accounts');
+    const accounts = {{data:json:accounts}};
+
+    const statusMap = {
+      'active': '启用',
+      'inactive': '停用'
+    };
+    const typeMap = {
+      'paypal': 'PayPal',
+      'stripe': 'Stripe',
+      'bank': '银行卡',
+      'other': '其他'
+    };
+
+    function toggleConfigFields(prefix) {
+      const type = document.getElementById(prefix + '-type').value;
+      document.querySelectorAll('.config-section').forEach(s => s.style.display = 'none');
+      const section = document.getElementById(prefix + '-' + type + '-config');
+      if (section) section.style.display = 'block';
+      // 如果是银行卡，根据已选地区切换字段
+      if (type === 'bank') {
+        toggleBankRegion(prefix);
+      }
+    }
+
+    function toggleBankRegion(prefix) {
+      const regionSelect = document.getElementById(prefix + '-bank-region');
+      if (!regionSelect) return;
+      const region = regionSelect.value;
+      const intlSection = document.getElementById(prefix + '-bank-international');
+      if (intlSection) {
+        intlSection.style.display = region === 'international' ? 'block' : 'none';
+      }
+    }
+
+    // Render accounts table
+    const tbody = document.getElementById('accounts-table');
+    if (accounts.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px;">暂未配置收款账户。</td></tr>';
+    } else {
+      tbody.innerHTML = accounts.map(a => `
+        <tr>
+          <td>${a.id}</td>
+          <td><strong>${a.name}</strong></td>
+          <td><span class="badge badge-info">${typeMap[a.type] || a.type}</span></td>
+          <td><span class="badge ${a.status === 'active' ? 'badge-success' : 'badge-secondary'}">${statusMap[a.status] || a.status}</span></td>
+          <td>${a.is_default ? '<span class="badge badge-success">默认</span>' : '-'}</td>
+          <td>${a.sort_order}</td>
+          <td>
+            <button class="action-btn" onclick="editAccount(${a.id})">编辑</button>
+            <form method="POST" action="/admin/payment-accounts/${a.id}/delete" id="del-pay-${a.id}" style="display:inline;">
+              <button type="button" class="action-btn danger" onclick="confirmDelete('del-pay-${a.id}')">删除</button>
+            </form>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function editAccount(id) {
+      const acc = accounts.find(a => a.id === id);
+      if (!acc) return;
+
+      const section = document.getElementById('edit-section');
+      const config = acc.config_data || {};
+      const bankRegion = config.bank_region || 'domestic';
+      
+      section.innerHTML = `
+        <div class="admin-card" style="border:2px solid #4f46e5;">
+          <div class="admin-card-header">
+            <h3>编辑收款账户：${acc.name}</h3>
+            <button class="btn-admin btn-admin-secondary btn-admin-sm" onclick="document.getElementById('edit-section').innerHTML=''">取消</button>
+          </div>
+          <form method="POST" action="/admin/payment-accounts/${acc.id}/update" id="edit-form">
+            <input type="hidden" name="type" id="edit-type-hidden" value="${acc.type}">
+            <div class="form-row">
+              <div class="form-group">
+                <label>账户名称 *</label>
+                <input type="text" name="name" value="${acc.name}" required>
+              </div>
+              <div class="form-group">
+                <label>类型 *</label>
+                <select name="type" id="edit-type" onchange="toggleEditConfig(this.value)">
+                  <option value="paypal" ${acc.type === 'paypal' ? 'selected' : ''}>PayPal</option>
+                  <option value="stripe" ${acc.type === 'stripe' ? 'selected' : ''}>Stripe</option>
+                  <option value="bank" ${acc.type === 'bank' ? 'selected' : ''}>银行卡</option>
+                  <option value="other" ${acc.type === 'other' ? 'selected' : ''}>其他</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="edit-paypal" class="edit-config" style="${acc.type === 'paypal' ? '' : 'display:none;'}">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>PayPal Client ID</label>
+                  <input type="text" name="client_id" value="${config.client_id || ''}">
+                </div>
+                <div class="form-group">
+                  <label>PayPal Client Secret</label>
+                  <input type="text" name="client_secret" value="${config.client_secret || ''}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>运行模式</label>
+                <select name="mode">
+                  <option value="sandbox" ${config.mode === 'sandbox' ? 'selected' : ''}>沙盒模式（测试）</option>
+                  <option value="live" ${config.mode === 'live' ? 'selected' : ''}>正式模式（生产环境）</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="edit-stripe" class="edit-config" style="${acc.type === 'stripe' ? '' : 'display:none;'}">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Stripe 公钥</label>
+                  <input type="text" name="publishable_key" value="${config.publishable_key || ''}">
+                </div>
+                <div class="form-group">
+                  <label>Stripe 密钥</label>
+                  <input type="text" name="secret_key" value="${config.secret_key || ''}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Webhook 密钥</label>
+                <input type="text" name="webhook_secret" value="${config.webhook_secret || ''}">
+              </div>
+            </div>
+
+            <div id="edit-bank" class="edit-config" style="${acc.type === 'bank' ? '' : 'display:none;'}">
+              <div class="form-group">
+                <label>地区 *</label>
+                <select name="bank_region" id="edit-bank-region" onchange="toggleEditBankRegion()">
+                  <option value="domestic" ${bankRegion === 'domestic' ? 'selected' : ''}>中国国内银行卡</option>
+                  <option value="international" ${bankRegion === 'international' ? 'selected' : ''}>国际银行卡</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>持卡人姓名 *</label>
+                  <input type="text" name="bank_account_holder" value="${config.bank_account_holder || ''}" placeholder="例如 张三 / John Doe">
+                </div>
+                <div class="form-group">
+                  <label>银行卡号 *</label>
+                  <input type="text" name="bank_account_number" value="${config.bank_account_number || ''}" placeholder="银行卡号">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>银行名称 *</label>
+                  <input type="text" name="bank_name" value="${config.bank_name || ''}" placeholder="例如 中国工商银行 / Bank of America">
+                </div>
+                <div class="form-group">
+                  <label>支行名称</label>
+                  <input type="text" name="bank_branch" value="${config.bank_branch || ''}" placeholder="例如 北京朝阳支行 / Main Street Branch">
+                </div>
+              </div>
+              <div id="edit-bank-international" style="${bankRegion === 'international' ? '' : 'display:none;'}">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>SWIFT 代码</label>
+                    <input type="text" name="bank_swift_code" value="${config.bank_swift_code || ''}" placeholder="例如 BOFAUS3N">
+                  </div>
+                  <div class="form-group">
+                    <label>IBAN</label>
+                    <input type="text" name="bank_iban" value="${config.bank_iban || ''}" placeholder="例如 GB29 NWBK 6016 1331 9268 19">
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>结算货币</label>
+                <select name="bank_currency">
+                  <option value="USD" ${config.bank_currency === 'USD' ? 'selected' : ''}>USD - 美元</option>
+                  <option value="EUR" ${config.bank_currency === 'EUR' ? 'selected' : ''}>EUR - 欧元</option>
+                  <option value="GBP" ${config.bank_currency === 'GBP' ? 'selected' : ''}>GBP - 英镑</option>
+                  <option value="CNY" ${config.bank_currency === 'CNY' ? 'selected' : ''}>CNY - 人民币</option>
+                  <option value="JPY" ${config.bank_currency === 'JPY' ? 'selected' : ''}>JPY - 日元</option>
+                  <option value="HKD" ${config.bank_currency === 'HKD' ? 'selected' : ''}>HKD - 港币</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="edit-other" class="edit-config" style="${acc.type === 'other' ? '' : 'display:none;'}">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>商户 ID</label>
+                  <input type="text" name="merchant_id" value="${config.merchant_id || ''}">
+                </div>
+                <div class="form-group">
+                  <label>API 密钥</label>
+                  <input type="text" name="api_key" value="${config.api_key || ''}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>附加配置</label>
+                <textarea name="other_config" rows="3">${config.extra || ''}</textarea>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>状态</label>
+                <select name="status">
+                  <option value="active" ${acc.status === 'active' ? 'selected' : ''}>启用</option>
+                  <option value="inactive" ${acc.status === 'inactive' ? 'selected' : ''}>停用</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>排序</label>
+                <input type="number" name="sort_order" value="${acc.sort_order}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" name="is_default" value="1" style="width:auto;" ${acc.is_default ? 'checked' : ''}>
+                设为默认收款账户
+              </label>
+            </div>
+            <button type="submit" class="btn-admin btn-admin-primary btn-admin-lg">更新收款账户</button>
+          </form>
+        </div>
+      `;
+      section.scrollIntoView({behavior:'smooth'});
+    }
+
+    function toggleEditConfig(type) {
+      document.querySelectorAll('.edit-config').forEach(s => s.style.display = 'none');
+      const section = document.getElementById('edit-' + type);
+      if (section) section.style.display = 'block';
+    }
+
+    function toggleEditBankRegion() {
+      const regionSelect = document.getElementById('edit-bank-region');
+      if (!regionSelect) return;
+      const region = regionSelect.value;
+      const intlSection = document.getElementById('edit-bank-international');
+      if (intlSection) {
+        intlSection.style.display = region === 'international' ? 'block' : 'none';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理员登录 - {{settings.store_name}}</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-box">
+      <h1>{{settings.store_name}}</h1>
+      <p class="subtitle">管理后台登录</p>
+      
+      <div id="error-msg"></div>
+      
+      <form method="POST" action="/admin/login">
+        <div class="form-group">
+          <label>用户名</label>
+          <input type="text" name="username" required autofocus>
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn-admin btn-admin-primary btn-admin-lg" style="width:100%;">登录</button>
+      </form>
+      
+      <div class="login-hint">
+        默认账号：admin / admin123456<br>
+        登录后请及时修改密码。
+      </div>
+    </div>
+  </div>
+  <script>
+    const errorMsg = "{{data.error}}";
+    if (errorMsg) {
+      document.getElementById('error-msg').innerHTML = '<div class="error-msg">' + errorMsg + '</div>';
+    }
+  </script>
+</body>
+</html>
