@@ -70,6 +70,15 @@
 
             <!-- Stripe Config -->
             <div id="add-stripe-config" class="config-section" style="display:none;">
+              <div style="background:#f0f4ff; border:1px solid #635BFF; border-radius:8px; padding:12px; margin-bottom:12px;">
+                <p style="margin:0; color:#333; font-size:13px;">
+                  <strong>如何获取 Stripe 密钥？</strong><br>
+                  1. 注册/登录 <a href="https://dashboard.stripe.com/register" target="_blank" style="color:#635BFF;">Stripe Dashboard</a><br>
+                  2. 左侧菜单 → Developers → API Keys<br>
+                  3. 复制 <code>Publishable key</code>（pk_ 开头）和 <code>Secret key</code>（sk_ 开头）<br>
+                  4. 完成账户激活后，测试密钥自动切换为正式密钥
+                </p>
+              </div>
               <div class="form-row">
                 <div class="form-group">
                   <label>Stripe 公钥</label>
@@ -83,6 +92,7 @@
               <div class="form-group">
                 <label>Webhook 密钥</label>
                 <input type="text" name="webhook_secret" placeholder="whsec_...">
+                <small style="color:#999;">Webhook 密钥可选，用于自动确认支付。如不填写，支付成功后需手动确认订单状态。</small>
               </div>
             </div>
 

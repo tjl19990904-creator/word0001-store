@@ -28,27 +28,27 @@
     <h1>Checkout</h1>
     <div class="checkout-grid">
       <div class="checkout-form">
-        <form method="POST" action="/checkout/place-order" id="checkout-form">
+        <form id="checkout-form">
           <!-- Contact Info -->
           <div class="form-section">
             <h3>Contact Information</h3>
             <div class="form-row">
               <div class="form-group">
                 <label>First Name *</label>
-                <input type="text" name="firstName" required>
+                <input type="text" name="firstName" id="firstName" required>
               </div>
               <div class="form-group">
                 <label>Last Name *</label>
-                <input type="text" name="lastName" required>
+                <input type="text" name="lastName" id="lastName" required>
               </div>
             </div>
             <div class="form-group">
               <label>Email *</label>
-              <input type="email" name="email" required>
+              <input type="email" name="email" id="email" required>
             </div>
             <div class="form-group">
               <label>Phone *</label>
-              <input type="tel" name="phone" required>
+              <input type="tel" name="phone" id="phone" required>
             </div>
           </div>
 
@@ -57,26 +57,26 @@
             <h3>Shipping Address</h3>
             <div class="form-group">
               <label>Street Address *</label>
-              <input type="text" name="address" required>
+              <input type="text" name="address" id="address" required>
             </div>
             <div class="form-row">
               <div class="form-group">
                 <label>City *</label>
-                <input type="text" name="city" required>
+                <input type="text" name="city" id="city" required>
               </div>
               <div class="form-group">
                 <label>State/Province *</label>
-                <input type="text" name="state" required>
+                <input type="text" name="state" id="state" required>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
                 <label>ZIP/Postal Code *</label>
-                <input type="text" name="zip" required>
+                <input type="text" name="zip" id="zip" required>
               </div>
               <div class="form-group">
                 <label>Country *</label>
-                <input type="text" name="country" value="United States" required>
+                <input type="text" name="country" id="country" value="United States" required>
               </div>
             </div>
           </div>
@@ -91,11 +91,14 @@
           <div class="form-section">
             <h3>Order Notes (Optional)</h3>
             <div class="form-group">
-              <textarea name="notes" rows="3" placeholder="Any special instructions for your order..."></textarea>
+              <textarea name="notes" id="notes" rows="3" placeholder="Any special instructions for your order..."></textarea>
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Place Order</button>
+          <button type="submit" class="btn btn-primary btn-lg" id="place-order-btn" style="width:100%;">
+            Place Order
+          </button>
+          <div id="payment-error" style="color:#f44336; text-align:center; margin-top:12px; display:none;"></div>
         </form>
       </div>
 
@@ -118,12 +121,14 @@
     const paymentAccounts = {{data:json:paymentAccounts}};
     const shippingCost = {{data.shippingCost}};
 
+    let selectedPaymentAccount = null;
+
     // Render summary items
     const sumEl = document.getElementById('summary-items');
     if (sumEl) {
       sumEl.innerHTML = cartItems.map(item => `
         <div class="summary-item">
-          <img src="${item.primary_image}" alt="${item.name}" 
+          <img src="${item.primary_image}" alt="${item.name}"
                onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'">
           <div class="info">
             <div class="name">${item.name}</div>
@@ -143,38 +148,155 @@
     if (payEl) {
       if (paymentAccounts.length === 0) {
         payEl.innerHTML = '<p style="color:#999; padding:12px;">No payment methods configured. Please contact us to complete your order.</p>';
-        document.querySelector('button[type="submit"]').disabled = true;
+        document.getElementById('place-order-btn').disabled = true;
       } else {
-        payEl.innerHTML = paymentAccounts.map((acc, i) => `
-          <div class="payment-method ${i === 0 ? 'selected' : ''}" onclick="selectPayment(this)">
-            <input type="radio" name="paymentAccountId" value="${acc.id}" id="pay-${acc.id}" ${i === 0 ? 'checked' : ''} onchange="selectPayment(this.parentElement)">
-            <label for="pay-${acc.id}">${acc.name} (${acc.type})</label>
-          </div>
-        `).join('');
-        
-        // Set default payment method
-        const firstInput = payEl.querySelector('input[name="paymentMethod"]');
-        if (!document.querySelector('input[name="paymentMethod"]')) {
-          const hiddenInput = document.createElement('input');
-          hiddenInput.type = 'hidden';
-          hiddenInput.name = 'paymentMethod';
-          hiddenInput.value = paymentAccounts[0].type;
-          document.getElementById('checkout-form').appendChild(hiddenInput);
-        }
+        payEl.innerHTML = paymentAccounts.map((acc, i) => {
+          const icon = getPaymentIcon(acc.type);
+          const label = getPaymentLabel(acc.type, acc.name);
+          return `
+            <div class="payment-method ${i === 0 ? 'selected' : ''}" onclick="selectPayment(this, ${acc.id})">
+              <input type="radio" name="paymentAccountId" value="${acc.id}" id="pay-${acc.id}" ${i === 0 ? 'checked' : ''}>
+              <label for="pay-${acc.id}" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                ${icon}
+                <span>${label}</span>
+              </label>
+            </div>
+          `;
+        }).join('');
+
+        selectedPaymentAccount = paymentAccounts[0];
       }
     }
 
-    function selectPayment(el) {
+    function getPaymentIcon(type) {
+      const icons = {
+        'stripe': '<svg width="24" height="24" viewBox="0 0 60 25" fill="none"><path d="M59.64 14.12c0-4.78-2.55-8.55-7.43-8.55-4.89 0-7.86 3.77-7.86 8.51 0 5.61 3.17 8.46 8.5 8.46 2.45 0 4.3-.56 5.7-1.34v-4.11c-1.4.7-3 1.13-5.04 1.13-2 0-3.77-.7-4-3.12h10.07c.02-.28.06-1.4.06-1.98zm-10.2-1.77c0-2.32 1.42-3.3 2.72-3.3 1.27 0 2.62.96 2.62 3.3h-5.34zM38.32 5.57c-2 0-3.3.94-4 1.6l-.27-1.27H29.5v20.94l5.13-1.08.02-5.07c.74.53 1.83 1.29 3.65 1.29 3.69 0 6.48-2.96 6.48-9.47-.02-5.93-2.87-8.94-6.46-8.94zm-1.24 14.08c-1.23 0-1.95-.44-2.45-.97l-.03-7.93c.54-.6 1.27-1.02 2.48-1.02 1.89 0 2.58 2.12 2.58 4.95 0 2.96-.67 4.97-2.58 4.97zM29.37 4.3L24.21 5.4V1.2l-5.14 1.08v4.23l5.16-1.09v20.94l5.14-1.08z" fill="#635BFF"/></svg>',
+        'paypal': '<svg width="20" height="20" viewBox="0 0 20 20" fill="#003087"><path d="M7.5 4h4.8c2.5 0 4.2 1.7 3.6 4.3-.6 2.8-3 4.7-5.5 4.7H8.4l-.5 3.5H5L7.5 4z"/></svg>',
+        'bank': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M16 10v11"/></svg>',
+        'usdt': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#26A17B"><circle cx="12" cy="12" r="12"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">₮</text></svg>',
+        'wise': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#9FE870"><circle cx="12" cy="12" r="12"/></svg>',
+        'payoneer': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#FF4800"><circle cx="12" cy="12" r="12"/></svg>',
+        'cashapp': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#00D632"><circle cx="12" cy="12" r="12"/></svg>',
+        'alipay': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#1677FF"><circle cx="12" cy="12" r="12"/></svg>',
+        'wechat': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#07C160"><circle cx="12" cy="12" r="12"/></svg>',
+        'other': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#666"><circle cx="12" cy="12" r="12"/></svg>'
+      };
+      return icons[type] || icons['other'];
+    }
+
+    function getPaymentLabel(type, name) {
+      const labels = {
+        'stripe': 'Stripe (Credit Card / Apple Pay / Google Pay)',
+        'paypal': 'PayPal',
+        'bank': name + ' (Bank Transfer)',
+        'usdt': name + ' (USDT / Crypto)',
+        'wise': name + ' (Wise)',
+        'payoneer': name + ' (Payoneer)',
+        'cashapp': name + ' (Cash App)',
+        'alipay': name + ' (Alipay)',
+        'wechat': name + ' (WeChat Pay)',
+        'other': name
+      };
+      return labels[type] || name;
+    }
+
+    function selectPayment(el, accountId) {
       document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
       el.classList.add('selected');
       const radio = el.querySelector('input[type="radio"]');
       if (radio) radio.checked = true;
+      selectedPaymentAccount = paymentAccounts.find(a => a.id == accountId);
       
-      // Update hidden paymentMethod field
-      const hiddenInput = document.querySelector('input[name="paymentMethod"]');
-      const account = paymentAccounts.find(a => a.id == radio.value);
-      if (hiddenInput && account) hiddenInput.value = account.type;
+      // Update button text
+      const btn = document.getElementById('place-order-btn');
+      if (selectedPaymentAccount && selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key) {
+        btn.textContent = 'Pay with Stripe';
+      } else if (selectedPaymentAccount && selectedPaymentAccount.type === 'stripe') {
+        btn.textContent = 'Place Order (Stripe Not Configured)';
+      } else {
+        btn.textContent = 'Place Order';
+      }
     }
+
+    // Handle form submission
+    document.getElementById('checkout-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const errorEl = document.getElementById('payment-error');
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+
+      if (!selectedPaymentAccount) {
+        errorEl.textContent = 'Please select a payment method.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      const formData = {
+        firstName: document.getElementById('firstName').value,
+        lastName: document.getElementById('lastName').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        address: document.getElementById('address').value,
+        city: document.getElementById('city').value,
+        state: document.getElementById('state').value,
+        zip: document.getElementById('zip').value,
+        country: document.getElementById('country').value,
+        notes: document.getElementById('notes').value,
+        paymentAccountId: selectedPaymentAccount.id,
+        paymentMethod: selectedPaymentAccount.type
+      };
+
+      const btn = document.getElementById('place-order-btn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+
+      try {
+        if (selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key) {
+          // Stripe online payment - create checkout session
+          const response = await fetch('/payment/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+          
+          const result = await response.json();
+          
+          if (result.success && result.url) {
+            // Redirect to Stripe Checkout
+            window.location.href = result.url;
+          } else {
+            throw new Error(result.error || 'Failed to create payment session');
+          }
+        } else {
+          // Non-Stripe payment - place order directly (offline payment)
+          const formDataEncoded = new URLSearchParams();
+          Object.keys(formData).forEach(key => formDataEncoded.append(key, formData[key]));
+
+          const response = await fetch('/checkout/place-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formDataEncoded.toString()
+          });
+
+          if (response.redirected) {
+            window.location.href = response.url;
+          } else {
+            const html = await response.text();
+            document.open();
+            document.write(html);
+            document.close();
+          }
+        }
+      } catch (err) {
+        console.error('Checkout error:', err);
+        errorEl.textContent = err.message || 'An error occurred. Please try again.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
   </script>
 </body>
 </html>

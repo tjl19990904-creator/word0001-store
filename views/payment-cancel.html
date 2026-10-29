@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Cancelled - {{settings.store_name}}</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="announcement-bar">{{settings.announcement_bar}}</div>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">{{settings.store_name}}</a>
+      <nav><ul class="nav-menu">
+        <li><a href="/">Home</a></li>
+        <li><a href="/products">Products</a></li>
+        <li><a href="/track-order">Track Order</a></li>
+        <li><a href="/about">About</a></li>
+        <li><a href="/contact">Contact</a></li>
+      </ul></nav>
+    </div>
+  </header>
+
+  <div class="container" style="max-width:600px; text-align:center; padding:60px 20px;">
+    <div style="width:80px; height:80px; background:#f44336; border-radius:50%; margin:0 auto 24px; display:flex; align-items:center; justify-content:center;">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </div>
+    <h1 style="font-size:2em; margin-bottom:16px;">Payment Cancelled</h1>
+    <p style="font-size:1.1em; color:#666; margin-bottom:32px;">Your payment was cancelled. No charges were made. You can try again anytime.</p>
+
+    <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+      <a href="/cart" class="btn btn-primary" style="padding:12px 32px;">Return to Cart</a>
+      <a href="/products" class="btn btn-secondary" style="padding:12px 32px;">Continue Shopping</a>
+    </div>
+  </div>
+
+  <footer class="footer"><div class="footer-bottom">{{settings.store_footer_text}}</div></footer>
+</body>
+</html>

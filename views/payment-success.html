@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Successful - {{settings.store_name}}</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="announcement-bar">{{settings.announcement_bar}}</div>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">{{settings.store_name}}</a>
+      <nav><ul class="nav-menu">
+        <li><a href="/">Home</a></li>
+        <li><a href="/products">Products</a></li>
+        <li><a href="/track-order">Track Order</a></li>
+        <li><a href="/about">About</a></li>
+        <li><a href="/contact">Contact</a></li>
+      </ul></nav>
+    </div>
+  </header>
+
+  <div class="container" style="max-width:700px; text-align:center; padding:60px 20px;">
+    <div style="width:80px; height:80px; background:#4caf50; border-radius:50%; margin:0 auto 24px; display:flex; align-items:center; justify-content:center;">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <h1 style="font-size:2em; margin-bottom:16px;">Payment Successful!</h1>
+    <p style="font-size:1.1em; color:#666; margin-bottom:8px;">Thank you for your purchase. Your payment has been processed successfully.</p>
+    <p style="margin-bottom:24px;">A confirmation email will be sent to you shortly.</p>
+
+    <div style="background:#f9f9f9; border-radius:8px; padding:24px; margin-bottom:32px; text-align:left;">
+      <h3 style="margin-bottom:16px;">Order Details</h3>
+      <div id="order-info"></div>
+    </div>
+
+    <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+      <a href="/track-order" class="btn btn-primary" style="padding:12px 32px;">Track Order</a>
+      <a href="/products" class="btn btn-secondary" style="padding:12px 32px;">Continue Shopping</a>
+    </div>
+  </div>
+
+  <footer class="footer"><div class="footer-bottom">{{settings.store_footer_text}}</div></footer>
+  <script>
+    const order = {{data:json:order}};
+    const orderItems = {{data:json:orderItems}};
+    const isPaid = {{data.isPaid}};
+
+    const infoEl = document.getElementById('order-info');
+    if (order) {
+      let html = `
+        <p style="margin-bottom:8px;"><strong>Order Number:</strong> ${order.order_number || 'N/A'}</p>
+        <p style="margin-bottom:8px;"><strong>Status:</strong> ${isPaid ? 'Paid & Processing' : 'Processing'}</p>
+        <p style="margin-bottom:16px;"><strong>Total:</strong> $${(order.total || 0).toFixed(2)}</p>
+      `;
+      if (orderItems && orderItems.length > 0) {
+        html += '<div style="border-top:1px solid #ddd; padding-top:12px;"><strong>Items:</strong></div>';
+        orderItems.forEach(item => {
+          html += `
+            <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee;">
+              <span>${item.product_name} x ${item.quantity}</span>
+              <span>$${(item.total || 0).toFixed(2)}</span>
+            </div>
+          `;
+        });
+      }
+      infoEl.innerHTML = html;
+    } else {
+      infoEl.innerHTML = '<p>Order information not available.</p>';
+    }
+  </script>
+</body>
+</html>
