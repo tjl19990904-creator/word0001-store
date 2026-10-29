@@ -128,8 +128,10 @@ app.locals.requireAuth = requireAuth;
 const storeRoutes = require('./routes/store');
 const adminRoutes = require('./routes/admin');
 const apiRoutes = require('./routes/api');
+const airwallexRoutes = require('./routes/airwallex');
 
 app.use('/payment', stripeRoutes);
+app.use('/payment', airwallexRoutes);
 app.use('/', storeRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api', apiRoutes);

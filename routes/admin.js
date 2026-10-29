@@ -355,7 +355,8 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
     payoneer_email, payoneer_customer_id, payoneer_currency, payoneer_account_type,
     cashapp_cashtag, cashapp_email, cashapp_currency, cashapp_link,
     alipay_account, alipay_name, alipay_pid, alipay_app_id, alipay_private_key, alipay_type,
-    wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type
+    wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type,
+    airwallex_client_id, airwallex_api_key, airwallex_webhook_secret, airwallex_currency
   } = req.body;
 
   let config = {};
@@ -363,6 +364,13 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
     config = { client_id: client_id || '', client_secret: client_secret || '', mode: mode || 'sandbox' };
   } else if (type === 'stripe') {
     config = { publishable_key: publishable_key || '', secret_key: secret_key || '', webhook_secret: webhook_secret || '' };
+  } else if (type === 'airwallex') {
+    config = {
+      client_id: airwallex_client_id || '',
+      api_key: airwallex_api_key || '',
+      webhook_secret: airwallex_webhook_secret || '',
+      currency: airwallex_currency || 'USD'
+    };
   } else if (type === 'bank') {
     config = {
       bank_region: bank_region || 'domestic',
@@ -449,7 +457,8 @@ router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
     payoneer_email, payoneer_customer_id, payoneer_currency, payoneer_account_type,
     cashapp_cashtag, cashapp_email, cashapp_currency, cashapp_link,
     alipay_account, alipay_name, alipay_pid, alipay_app_id, alipay_private_key, alipay_type,
-    wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type
+    wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type,
+    airwallex_client_id, airwallex_api_key, airwallex_webhook_secret, airwallex_currency
   } = req.body;
 
   let config = {};
@@ -457,6 +466,13 @@ router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
     config = { client_id: client_id || '', client_secret: client_secret || '', mode: mode || 'sandbox' };
   } else if (type === 'stripe') {
     config = { publishable_key: publishable_key || '', secret_key: secret_key || '', webhook_secret: webhook_secret || '' };
+  } else if (type === 'airwallex') {
+    config = {
+      client_id: airwallex_client_id || '',
+      api_key: airwallex_api_key || '',
+      webhook_secret: airwallex_webhook_secret || '',
+      currency: airwallex_currency || 'USD'
+    };
   } else if (type === 'bank') {
     config = {
       bank_region: bank_region || 'domestic',

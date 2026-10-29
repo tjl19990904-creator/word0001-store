@@ -171,6 +171,7 @@
     function getPaymentIcon(type) {
       const icons = {
         'stripe': '<svg width="24" height="24" viewBox="0 0 60 25" fill="none"><path d="M59.64 14.12c0-4.78-2.55-8.55-7.43-8.55-4.89 0-7.86 3.77-7.86 8.51 0 5.61 3.17 8.46 8.5 8.46 2.45 0 4.3-.56 5.7-1.34v-4.11c-1.4.7-3 1.13-5.04 1.13-2 0-3.77-.7-4-3.12h10.07c.02-.28.06-1.4.06-1.98zm-10.2-1.77c0-2.32 1.42-3.3 2.72-3.3 1.27 0 2.62.96 2.62 3.3h-5.34zM38.32 5.57c-2 0-3.3.94-4 1.6l-.27-1.27H29.5v20.94l5.13-1.08.02-5.07c.74.53 1.83 1.29 3.65 1.29 3.69 0 6.48-2.96 6.48-9.47-.02-5.93-2.87-8.94-6.46-8.94zm-1.24 14.08c-1.23 0-1.95-.44-2.45-.97l-.03-7.93c.54-.6 1.27-1.02 2.48-1.02 1.89 0 2.58 2.12 2.58 4.95 0 2.96-.67 4.97-2.58 4.97zM29.37 4.3L24.21 5.4V1.2l-5.14 1.08v4.23l5.16-1.09v20.94l5.14-1.08z" fill="#635BFF"/></svg>',
+        'airwallex': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#9FE870"><circle cx="12" cy="12" r="12"/></svg>',
         'paypal': '<svg width="20" height="20" viewBox="0 0 20 20" fill="#003087"><path d="M7.5 4h4.8c2.5 0 4.2 1.7 3.6 4.3-.6 2.8-3 4.7-5.5 4.7H8.4l-.5 3.5H5L7.5 4z"/></svg>',
         'bank': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M16 10v11"/></svg>',
         'usdt': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#26A17B"><circle cx="12" cy="12" r="12"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">₮</text></svg>',
@@ -187,6 +188,7 @@
     function getPaymentLabel(type, name) {
       const labels = {
         'stripe': 'Stripe (Credit Card / Apple Pay / Google Pay)',
+        'airwallex': 'Airwallex (Credit Card / Apple Pay / Google Pay / Local Methods)',
         'paypal': 'PayPal',
         'bank': name + ' (Bank Transfer)',
         'usdt': name + ' (USDT / Crypto)',
@@ -209,13 +211,33 @@
       
       // Update button text
       const btn = document.getElementById('place-order-btn');
-      if (selectedPaymentAccount && selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key) {
-        btn.textContent = 'Pay with Stripe';
-      } else if (selectedPaymentAccount && selectedPaymentAccount.type === 'stripe') {
-        btn.textContent = 'Place Order (Stripe Not Configured)';
-      } else {
-        btn.textContent = 'Place Order';
+      if (selectedPaymentAccount) {
+        const hasStripe = selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key;
+        const hasAirwallex = selectedPaymentAccount.type === 'airwallex' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.client_id && selectedPaymentAccount.config_data.api_key;
+        if (hasStripe) {
+          btn.textContent = 'Pay with Stripe';
+        } else if (hasAirwallex) {
+          btn.textContent = 'Pay with Airwallex';
+        } else if (selectedPaymentAccount.type === 'stripe') {
+          btn.textContent = 'Place Order (Stripe Not Configured)';
+        } else if (selectedPaymentAccount.type === 'airwallex') {
+          btn.textContent = 'Place Order (Airwallex Not Configured)';
+        } else {
+          btn.textContent = 'Place Order';
+        }
       }
+    }
+
+    // Load Airwallex.js
+    function loadAirwallexJS() {
+      return new Promise((resolve, reject) => {
+        if (window.Airwallex) { resolve(); return; }
+        const script = document.createElement('script');
+        script.src = 'https://static.airwallex.com/airwallex.js/1.5.0/airwallex.js';
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Airwallex.js'));
+        document.head.appendChild(script);
+      });
     }
 
     // Handle form submission
@@ -253,7 +275,10 @@
       btn.textContent = 'Processing...';
 
       try {
-        if (selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key) {
+        const hasStripe = selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key;
+        const hasAirwallex = selectedPaymentAccount.type === 'airwallex' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.client_id && selectedPaymentAccount.config_data.api_key;
+
+        if (hasStripe) {
           // Stripe online payment - create checkout session
           const response = await fetch('/payment/create-checkout-session', {
             method: 'POST',
@@ -268,6 +293,36 @@
             window.location.href = result.url;
           } else {
             throw new Error(result.error || 'Failed to create payment session');
+          }
+        } else if (hasAirwallex) {
+          // Airwallex payment - create payment intent then redirect to hosted page
+          const response = await fetch('/payment/create-payment-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+          
+          const result = await response.json();
+          
+          if (result.success && result.clientSecret) {
+            // Load Airwallex.js and redirect to hosted payment page
+            if (!window.Airwallex) {
+              await loadAirwallexJS();
+            }
+            
+            // Use Airwallex redirectToCheckout
+            window.Airwallex.payments.redirectToCheckout({
+              env: 'production',
+              locale: 'en',
+              origin: window.location.origin,
+              clientSecret: result.clientSecret,
+              successUrl: result.returnUrl,
+              failUrl: result.returnUrl.replace('airwallex-success', 'cancel'),
+              paymentMethodType: ['card', 'googlepay', 'applepay'],
+              withShipping: false
+            });
+          } else {
+            throw new Error(result.error || 'Failed to create Airwallex payment session');
           }
         } else {
           // Non-Stripe payment - place order directly (offline payment)

@@ -35,6 +35,7 @@
                 <select name="type" id="add-type" onchange="toggleConfigFields('add')">
                   <option value="paypal">PayPal</option>
                   <option value="stripe">Stripe</option>
+                  <option value="airwallex">Airwallex（空中云汇）</option>
                   <option value="usdt">USDT / 加密货币</option>
                   <option value="wise">Wise (TransferWise)</option>
                   <option value="payoneer">Payoneer</option>
@@ -93,6 +94,46 @@
                 <label>Webhook 密钥</label>
                 <input type="text" name="webhook_secret" placeholder="whsec_...">
                 <small style="color:#999;">Webhook 密钥可选，用于自动确认支付。如不填写，支付成功后需手动确认订单状态。</small>
+              </div>
+            </div>
+
+            <!-- Airwallex Config -->
+            <div id="add-airwallex-config" class="config-section" style="display:none;">
+              <div style="background:#f0fdf4; border:1px solid #9FE870; border-radius:8px; padding:12px; margin-bottom:12px;">
+                <p style="margin:0; color:#333; font-size:13px;">
+                  <strong>如何获取 Airwallex API 密钥？</strong><br>
+                  1. 登录 <a href="https://www.airwallex.com/dashboard" target="_blank" style="color:#22C55E;">Airwallex Dashboard</a><br>
+                  2. 左侧菜单 → Settings → API Keys<br>
+                  3. 复制 <code>Client ID</code> 和生成 <code>API Key</code><br>
+                  4. 确保已开通「Payment」产品权限（收单功能）
+                </p>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Client ID *</label>
+                  <input type="text" name="airwallex_client_id" placeholder="Airwallex Client ID">
+                </div>
+                <div class="form-group">
+                  <label>API Key *</label>
+                  <input type="text" name="airwallex_api_key" placeholder="Airwallex API Key">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Webhook 密钥（可选）</label>
+                <input type="text" name="airwallex_webhook_secret" placeholder="whsec_...">
+                <small style="color:#999;">Webhook 密钥可选，用于自动确认支付。如不填写，支付成功后需手动确认订单状态。</small>
+              </div>
+              <div class="form-group">
+                <label>结算货币</label>
+                <select name="airwallex_currency">
+                  <option value="USD">USD - 美元</option>
+                  <option value="EUR">EUR - 欧元</option>
+                  <option value="GBP">GBP - 英镑</option>
+                  <option value="JPY">JPY - 日元</option>
+                  <option value="HKD">HKD - 港币</option>
+                  <option value="SGD">SGD - 新加坡元</option>
+                </select>
+                <small style="color:#999;">Airwallex 支持同币种结算，无需强制换汇。</small>
               </div>
             </div>
 
@@ -432,6 +473,7 @@
     const typeMap = {
       'paypal': 'PayPal',
       'stripe': 'Stripe',
+      'airwallex': 'Airwallex（空中云汇）',
       'usdt': 'USDT / 加密货币',
       'wise': 'Wise',
       'payoneer': 'Payoneer',
@@ -512,6 +554,7 @@
                 <select name="type" id="edit-type" onchange="toggleEditConfig(this.value)">
                   <option value="paypal" ${acc.type === 'paypal' ? 'selected' : ''}>PayPal</option>
                   <option value="stripe" ${acc.type === 'stripe' ? 'selected' : ''}>Stripe</option>
+                  <option value="airwallex" ${acc.type === 'airwallex' ? 'selected' : ''}>Airwallex（空中云汇）</option>
                   <option value="usdt" ${acc.type === 'usdt' ? 'selected' : ''}>USDT / 加密货币</option>
                   <option value="wise" ${acc.type === 'wise' ? 'selected' : ''}>Wise (TransferWise)</option>
                   <option value="payoneer" ${acc.type === 'payoneer' ? 'selected' : ''}>Payoneer</option>
@@ -558,6 +601,34 @@
               <div class="form-group">
                 <label>Webhook 密钥</label>
                 <input type="text" name="webhook_secret" value="${config.webhook_secret || ''}">
+              </div>
+            </div>
+
+            <div id="edit-airwallex" class="edit-config" style="${acc.type === 'airwallex' ? '' : 'display:none;'}">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Client ID *</label>
+                  <input type="text" name="airwallex_client_id" value="${config.airwallex_client_id || ''}">
+                </div>
+                <div class="form-group">
+                  <label>API Key *</label>
+                  <input type="text" name="airwallex_api_key" value="${config.airwallex_api_key || ''}">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Webhook 密钥（可选）</label>
+                <input type="text" name="airwallex_webhook_secret" value="${config.airwallex_webhook_secret || ''}">
+              </div>
+              <div class="form-group">
+                <label>结算货币</label>
+                <select name="airwallex_currency">
+                  <option value="USD" ${config.airwallex_currency === 'USD' ? 'selected' : ''}>USD - 美元</option>
+                  <option value="EUR" ${config.airwallex_currency === 'EUR' ? 'selected' : ''}>EUR - 欧元</option>
+                  <option value="GBP" ${config.airwallex_currency === 'GBP' ? 'selected' : ''}>GBP - 英镑</option>
+                  <option value="JPY" ${config.airwallex_currency === 'JPY' ? 'selected' : ''}>JPY - 日元</option>
+                  <option value="HKD" ${config.airwallex_currency === 'HKD' ? 'selected' : ''}>HKD - 港币</option>
+                  <option value="SGD" ${config.airwallex_currency === 'SGD' ? 'selected' : ''}>SGD - 新加坡元</option>
+                </select>
               </div>
             </div>
 
