@@ -14,7 +14,6 @@ const PORT = process.env.PORT || 3000;
 // ===== Middleware =====
 // Stripe webhook needs raw body - register it BEFORE express.json
 const stripeRoutes = require('./routes/stripe');
-
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json({ limit: '50mb', verify: (req, res, buf) => {
   // Store raw body for Stripe webhook verification
@@ -129,9 +128,11 @@ const storeRoutes = require('./routes/store');
 const adminRoutes = require('./routes/admin');
 const apiRoutes = require('./routes/api');
 const airwallexRoutes = require('./routes/airwallex');
+const cashappRoutes = require('./routes/cashapp');
 
 app.use('/payment', stripeRoutes);
 app.use('/payment', airwallexRoutes);
+app.use('/payment', cashappRoutes);
 app.use('/', storeRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api', apiRoutes);

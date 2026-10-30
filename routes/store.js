@@ -252,6 +252,11 @@ router.get('/checkout', (req, res) => {
   const paymentAccounts = db.findAll('payment_accounts', { where: { status: 'active' } });
   paymentAccounts.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
+  // Parse config JSON for each account so frontend can check if payment is configured
+  paymentAccounts.forEach(a => {
+    try { a.config_data = JSON.parse(a.config || '{}'); } catch { a.config_data = {}; }
+  });
+
   renderPage(res, 'checkout.html', { 
     cartItems, subtotal, shippingCost, tax, total, paymentAccounts, pageTitle: 'Checkout' 
   });

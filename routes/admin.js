@@ -354,6 +354,7 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
     wise_email, wise_account_id, wise_currency, wise_api_key, wise_link,
     payoneer_email, payoneer_customer_id, payoneer_currency, payoneer_account_type,
     cashapp_cashtag, cashapp_email, cashapp_currency, cashapp_link,
+    cashapp_square_app_id, cashapp_square_access_token, cashapp_square_location_id, cashapp_square_environment,
     alipay_account, alipay_name, alipay_pid, alipay_app_id, alipay_private_key, alipay_type,
     wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type,
     airwallex_client_id, airwallex_api_key, airwallex_webhook_secret, airwallex_currency
@@ -407,6 +408,10 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
     };
   } else if (type === 'cashapp') {
     config = {
+      square_app_id: cashapp_square_app_id || '',
+      square_access_token: cashapp_square_access_token || '',
+      square_location_id: cashapp_square_location_id || '',
+      square_environment: cashapp_square_environment || 'sandbox',
       cashapp_cashtag: cashapp_cashtag || '',
       cashapp_email: cashapp_email || '',
       cashapp_currency: cashapp_currency || 'USD',
@@ -456,6 +461,7 @@ router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
     wise_email, wise_account_id, wise_currency, wise_api_key, wise_link,
     payoneer_email, payoneer_customer_id, payoneer_currency, payoneer_account_type,
     cashapp_cashtag, cashapp_email, cashapp_currency, cashapp_link,
+    cashapp_square_app_id, cashapp_square_access_token, cashapp_square_location_id, cashapp_square_environment,
     alipay_account, alipay_name, alipay_pid, alipay_app_id, alipay_private_key, alipay_type,
     wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type,
     airwallex_client_id, airwallex_api_key, airwallex_webhook_secret, airwallex_currency
@@ -509,6 +515,10 @@ router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
     };
   } else if (type === 'cashapp') {
     config = {
+      square_app_id: cashapp_square_app_id || '',
+      square_access_token: cashapp_square_access_token || '',
+      square_location_id: cashapp_square_location_id || '',
+      square_environment: cashapp_square_environment || 'sandbox',
       cashapp_cashtag: cashapp_cashtag || '',
       cashapp_email: cashapp_email || '',
       cashapp_currency: cashapp_currency || 'USD',

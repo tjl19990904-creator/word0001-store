@@ -214,14 +214,19 @@
       if (selectedPaymentAccount) {
         const hasStripe = selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key;
         const hasAirwallex = selectedPaymentAccount.type === 'airwallex' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.client_id && selectedPaymentAccount.config_data.api_key;
+        const hasCashApp = selectedPaymentAccount.type === 'cashapp' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.square_app_id && selectedPaymentAccount.config_data.square_access_token;
         if (hasStripe) {
           btn.textContent = 'Pay with Stripe';
         } else if (hasAirwallex) {
           btn.textContent = 'Pay with Airwallex';
+        } else if (hasCashApp) {
+          btn.textContent = 'Pay with Cash App';
         } else if (selectedPaymentAccount.type === 'stripe') {
           btn.textContent = 'Place Order (Stripe Not Configured)';
         } else if (selectedPaymentAccount.type === 'airwallex') {
           btn.textContent = 'Place Order (Airwallex Not Configured)';
+        } else if (selectedPaymentAccount.type === 'cashapp') {
+          btn.textContent = 'Place Order (Cash App Not Configured)';
         } else {
           btn.textContent = 'Place Order';
         }
@@ -277,6 +282,7 @@
       try {
         const hasStripe = selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key;
         const hasAirwallex = selectedPaymentAccount.type === 'airwallex' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.client_id && selectedPaymentAccount.config_data.api_key;
+        const hasCashApp = selectedPaymentAccount.type === 'cashapp' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.square_app_id && selectedPaymentAccount.config_data.square_access_token;
 
         if (hasStripe) {
           // Stripe online payment - create checkout session
@@ -323,6 +329,76 @@
             });
           } else {
             throw new Error(result.error || 'Failed to create Airwallex payment session');
+          }
+        } else if (hasCashApp) {
+          // Cash App Pay - create Square order, then initiate Cash App Pay
+          const response = await fetch('/payment/create-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to create Cash App payment');
+          }
+
+          // Load Square Web Payments SDK
+          const squareEnv = result.environment === 'production' ? 'production' : 'sandbox';
+          if (!window.Square) {
+            await new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
+              if (squareEnv === 'production') {
+                script.src = 'https://web.squarecdn.com/v1/square.js';
+              }
+              script.onload = resolve;
+              script.onerror = () => reject(new Error('Failed to load Square SDK'));
+              document.head.appendChild(script);
+            });
+          }
+
+          // Initialize Square payments
+          const payments = window.Square.payments(result.appId, result.locationId);
+
+          // Create Cash App Pay payment
+          const cashAppPay = await payments.cashAppPay();
+
+          // Create payment token via Cash App Pay
+          const tokenResult = await cashAppPay.tokenize({
+            amount: {
+              currencyCode: result.currency,
+              amount: (result.totalCents / 100).toFixed(2)
+            },
+            redirectURL: result.returnUrl,
+            referenceId: result.orderNumber
+          });
+
+          if (tokenResult.status === 'OK' && tokenResult.token) {
+            // Confirm payment server-side with the token
+            const confirmResponse = await fetch('/payment/confirm-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: result.orderId,
+                paymentToken: tokenResult.token,
+                squareOrderId: result.squareOrderId
+              })
+            });
+
+            const confirmResult = await confirmResponse.json();
+
+            if (confirmResult.success) {
+              // Redirect to success page
+              window.location.href = '/payment/cashapp-success?order=' + result.orderNumber + '&square_order_id=' + result.squareOrderId;
+            } else {
+              throw new Error(confirmResult.error || 'Cash App payment failed');
+            }
+          } else if (tokenResult.status === 'CANCEL') {
+            throw new Error('Cash App payment was cancelled');
+          } else {
+            throw new Error(tokenResult.errors ? tokenResult.errors[0].message : 'Cash App payment failed');
           }
         } else {
           // Non-Stripe payment - place order directly (offline payment)

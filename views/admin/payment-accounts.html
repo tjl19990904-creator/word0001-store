@@ -297,14 +297,43 @@
 
             <!-- Cash App Config -->
             <div id="add-cashapp-config" class="config-section" style="display:none;">
-              <div class="form-group">
-                <label>Cash App $Cashtag *</label>
-                <input type="text" name="cashapp_cashtag" placeholder="例如 $yourname">
+              <div style="background:#f0fdf4; border:1px solid #00D632; border-radius:8px; padding:12px; margin-bottom:12px;">
+                <p style="margin:0; color:#333; font-size:13px;">
+                  <strong>如何配置 Cash App 在线支付？</strong><br>
+                  Cash App 在线支付通过 Square Web Payments SDK 实现，客户可直接在网站完成支付。<br>
+                  1. 注册/登录 <a href="https://developer.squareup.com/apps" target="_blank" style="color:#00D632;">Square Developer Dashboard</a><br>
+                  2. 创建新应用，在 <strong>Credentials</strong> 页面获取 <code>Application ID</code> 和 <code>Access Token</code><br>
+                  3. 在 <strong>Locations</strong> 页面获取 <code>Location ID</code><br>
+                  4. 确保已启用 Cash App Pay 支付方式
+                </p>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>注册邮箱</label>
-                  <input type="text" name="cashapp_email" placeholder="Cash App 注册邮箱">
+                  <label>Square Application ID *</label>
+                  <input type="text" name="cashapp_square_app_id" placeholder="sq0idp-xxxxx">
+                </div>
+                <div class="form-group">
+                  <label>Square Access Token *</label>
+                  <input type="text" name="cashapp_square_access_token" placeholder="EAAAlxxxxx">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Square Location ID *</label>
+                  <input type="text" name="cashapp_square_location_id" placeholder="LPxxxxx">
+                </div>
+                <div class="form-group">
+                  <label>环境</label>
+                  <select name="cashapp_square_environment">
+                    <option value="sandbox">沙盒模式（测试）</option>
+                    <option value="production">正式模式（生产环境）</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Cash App $Cashtag</label>
+                  <input type="text" name="cashapp_cashtag" placeholder="例如 $yourname（可选，备用收款）">
                 </div>
                 <div class="form-group">
                   <label>收款货币</label>
@@ -315,8 +344,9 @@
                 </div>
               </div>
               <div class="form-group">
-                <label>收款链接</label>
+                <label>收款链接（可选）</label>
                 <input type="text" name="cashapp_link" placeholder="cash.app/$yourname">
+                <small style="color:#999;">如果在线支付无法使用，客户可手动通过此链接付款。</small>
               </div>
             </div>
 
@@ -733,14 +763,39 @@
             </div>
 
             <div id="edit-cashapp" class="edit-config" style="${acc.type === 'cashapp' ? '' : 'display:none;'}">
-              <div class="form-group">
-                <label>Cash App $Cashtag *</label>
-                <input type="text" name="cashapp_cashtag" value="${config.cashapp_cashtag || ''}" placeholder="例如 $yourname">
+              <div style="background:#f0fdf4; border:1px solid #00D632; border-radius:8px; padding:12px; margin-bottom:12px;">
+                <p style="margin:0; color:#333; font-size:13px;">
+                  <strong>Cash App 在线支付配置（通过 Square）</strong><br>
+                  在 <a href="https://developer.squareup.com/apps" target="_blank">Square Developer Dashboard</a> 获取 Application ID、Access Token 和 Location ID。
+                </p>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>注册邮箱</label>
-                  <input type="text" name="cashapp_email" value="${config.cashapp_email || ''}" placeholder="Cash App 注册邮箱">
+                  <label>Square Application ID *</label>
+                  <input type="text" name="cashapp_square_app_id" value="${config.square_app_id || config.cashapp_square_app_id || ''}" placeholder="sq0idp-xxxxx">
+                </div>
+                <div class="form-group">
+                  <label>Square Access Token *</label>
+                  <input type="text" name="cashapp_square_access_token" value="${config.square_access_token || config.cashapp_square_access_token || ''}" placeholder="EAAAlxxxxx">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Square Location ID *</label>
+                  <input type="text" name="cashapp_square_location_id" value="${config.square_location_id || config.cashapp_square_location_id || ''}" placeholder="LPxxxxx">
+                </div>
+                <div class="form-group">
+                  <label>环境</label>
+                  <select name="cashapp_square_environment">
+                    <option value="sandbox" ${(config.square_environment || config.cashapp_square_environment) === 'sandbox' ? 'selected' : ''}>沙盒模式（测试）</option>
+                    <option value="production" ${(config.square_environment || config.cashapp_square_environment) === 'production' ? 'selected' : ''}>正式模式（生产环境）</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Cash App $Cashtag</label>
+                  <input type="text" name="cashapp_cashtag" value="${config.cashapp_cashtag || ''}" placeholder="例如 $yourname（可选）">
                 </div>
                 <div class="form-group">
                   <label>收款货币</label>
@@ -751,7 +806,7 @@
                 </div>
               </div>
               <div class="form-group">
-                <label>收款链接</label>
+                <label>收款链接（可选）</label>
                 <input type="text" name="cashapp_link" value="${config.cashapp_link || ''}" placeholder="cash.app/$yourname">
               </div>
             </div>
