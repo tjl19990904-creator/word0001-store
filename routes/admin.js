@@ -27,6 +27,15 @@ function isLiveStripeConfiguredInEnvironment() {
     String(process.env.STRIPE_WEBHOOK_SECRET || '').startsWith('whsec_');
 }
 
+function normalizePaymentAccountType(value) {
+  const values = (Array.isArray(value) ? value : [value])
+    .flatMap(item => String(item || '').split(','))
+    .map(item => item.trim())
+    .filter(Boolean);
+  const supported = ['paypal', 'stripe', 'airwallex', 'usdt', 'wise', 'payoneer', 'cashapp', 'alipay', 'wechat', 'bank', 'other'];
+  return supported.find(type => values.includes(type)) || values[0] || '';
+}
+
 // Helper: render admin template
 function renderAdmin(res, templateName, data = {}) {
   const settings = getSettings();
@@ -344,6 +353,7 @@ router.get('/payment-accounts', requireAuth, (req, res) => {
   accounts.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   
   accounts.forEach(a => {
+    a.type = normalizePaymentAccountType(a.type);
     try { a.config_data = JSON.parse(a.config || '{}'); } catch { a.config_data = {}; }
     a.credentials_managed_by_env = a.type === 'stripe' && isLiveStripeConfiguredInEnvironment();
   });
@@ -354,7 +364,7 @@ router.get('/payment-accounts', requireAuth, (req, res) => {
 });
 
 router.post('/payment-accounts/create', requireAuth, (req, res) => {
-  const { name, type, status, is_default, sort_order, client_id, client_secret, mode,
+  const { name, type: typeInput, status, is_default, sort_order, client_id, client_secret, mode,
     publishable_key, secret_key, webhook_secret, merchant_id, api_key, other_config,
     bank_region, bank_account_holder, bank_account_number, bank_name, bank_branch,
     bank_swift_code, bank_iban, bank_currency,
@@ -367,6 +377,7 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
     wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type,
     airwallex_client_id, airwallex_api_key, airwallex_webhook_secret, airwallex_currency
   } = req.body;
+  const type = normalizePaymentAccountType(typeInput);
 
   let config = {};
   if (type === 'paypal') {
@@ -463,7 +474,7 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
 });
 
 router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
-  const { name, type, status, is_default, sort_order, client_id, client_secret, mode,
+  const { name, type: typeInput, status, is_default, sort_order, client_id, client_secret, mode,
     publishable_key, secret_key, webhook_secret, merchant_id, api_key, other_config,
     bank_region, bank_account_holder, bank_account_number, bank_name, bank_branch,
     bank_swift_code, bank_iban, bank_currency,
@@ -476,6 +487,7 @@ router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
     wechat_account, wechat_name, wechat_mch_id, wechat_api_key, wechat_app_id, wechat_type,
     airwallex_client_id, airwallex_api_key, airwallex_webhook_secret, airwallex_currency
   } = req.body;
+  const type = normalizePaymentAccountType(typeInput);
 
   let config = {};
   if (type === 'paypal') {

@@ -198,7 +198,7 @@
     },
     {
       "id": 2,
-      "name": "Stripe",
+      "name": "Hemi Import Export PTY LTD",
       "type": "stripe",
       "status": "active",
       "config": "{\"publishable_key\":\"\",\"secret_key\":\"\",\"webhook_secret\":\"\"}",

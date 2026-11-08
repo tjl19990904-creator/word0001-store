@@ -577,7 +577,6 @@
             <button class="btn-admin btn-admin-secondary btn-admin-sm" onclick="document.getElementById('edit-section').innerHTML=''">取消</button>
           </div>
           <form method="POST" action="/admin/payment-accounts/${acc.id}/update" id="edit-form">
-            <input type="hidden" name="type" id="edit-type-hidden" value="${acc.type}">
             <div class="form-row">
               <div class="form-group">
                 <label>账户名称 *</label>

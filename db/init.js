@@ -177,8 +177,26 @@ const dbWrapper = {
   }
 };
 
+function normalizePaymentAccountType(value) {
+  const values = (Array.isArray(value) ? value : [value])
+    .flatMap(item => String(item || '').split(','))
+    .map(item => item.trim())
+    .filter(Boolean);
+  const supported = ['paypal', 'stripe', 'airwallex', 'usdt', 'wise', 'payoneer', 'cashapp', 'alipay', 'wechat', 'bank', 'other'];
+  return supported.find(type => values.includes(type)) || values[0] || '';
+}
+
 // ===== Seed Default Data =====
 function seedData() {
+  let paymentAccountsChanged = false;
+  db.payment_accounts.forEach(account => {
+    const normalizedType = normalizePaymentAccountType(account.type);
+    if (normalizedType && normalizedType !== account.type) {
+      account.type = normalizedType;
+      paymentAccountsChanged = true;
+    }
+  });
+
   // Remove the retired Shenzhi bank-payment entry from existing JSON databases.
   const retiredAccountNames = new Set(['shenzhi', 'shen zhi', '神州', '神州收款']);
   const beforeCleanup = db.payment_accounts.length;
@@ -190,7 +208,8 @@ function seedData() {
       (retiredAccountNames.has(name) || String(config.bank_account_holder || '').trim() === '沈志');
     return !isRetiredBankAccount;
   });
-  if (db.payment_accounts.length !== beforeCleanup) save();
+  if (db.payment_accounts.length !== beforeCleanup) paymentAccountsChanged = true;
+  if (paymentAccountsChanged) save();
 
   // Default admin
   if (db.users.length === 0) {
@@ -290,9 +309,16 @@ function ensureLiveStripeDefaultAccount() {
   }
 
   const stripeAccounts = db.payment_accounts.filter(account => account.type === 'stripe');
-  let account = stripeAccounts.find(item => String(item.name || '').trim().toLowerCase() === 'stripe') ||
-    stripeAccounts.find(item => item.is_default) || stripeAccounts[0] || null;
+  let account = stripeAccounts.find(item => item.is_default) ||
+    stripeAccounts.find(item => String(item.name || '').trim().toLowerCase() === 'hemi import export pty ltd') ||
+    stripeAccounts.find(item => String(item.name || '').trim().toLowerCase() === 'stripe') ||
+    stripeAccounts[0] || null;
   let changed = false;
+
+  if (account && account.name !== 'Hemi Import Export PTY LTD') {
+    account.name = 'Hemi Import Export PTY LTD';
+    changed = true;
+  }
 
   if (!account) {
     const maxId = db.payment_accounts.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
@@ -300,7 +326,7 @@ function ensureLiveStripeDefaultAccount() {
     db.counters.payment_accounts = id;
     account = {
       id,
-      name: 'Stripe',
+      name: 'Hemi Import Export PTY LTD',
       type: 'stripe',
       status: 'active',
       config: JSON.stringify({ publishable_key: '', secret_key: '', webhook_secret: '' }),
