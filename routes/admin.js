@@ -349,6 +349,9 @@ router.post('/orders/:id/status', requireAuth, (req, res) => {
 
 // ===== Payment Accounts Management (收款账户) =====
 router.get('/payment-accounts', requireAuth, (req, res) => {
+  // Self-heal before rendering: the environment-managed Live Stripe account must
+  // always be present, active and default, even after an ephemeral disk reset.
+  db.ensureLiveStripeDefaultAccount();
   let accounts = db.findAll('payment_accounts');
   accounts.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   
@@ -358,9 +361,41 @@ router.get('/payment-accounts', requireAuth, (req, res) => {
     a.credentials_managed_by_env = a.type === 'stripe' && isLiveStripeConfiguredInEnvironment();
   });
 
-  renderAdmin(res, 'payment-accounts.html', { 
-    accounts, pageTitle: '收款账户管理', sessionUserId: req.session.userId 
+  renderAdmin(res, 'payment-accounts.html', {
+    accounts, pageTitle: '收款账户管理', sessionUserId: req.session.userId
   });
+});
+
+// Server-side connection check for the environment-managed Live Stripe account.
+// Only non-sensitive status fields are returned; the secret key never leaves the server.
+router.get('/payment-accounts/stripe-health', requireAuth, async (req, res) => {
+  if (!isLiveStripeConfiguredInEnvironment()) {
+    return res.json({ connected: false, error: '服务器未配置完整的 Stripe Live 环境变量，无法收款。' });
+  }
+  db.ensureLiveStripeDefaultAccount();
+  const account = db.findOne('payment_accounts', { type: 'stripe', is_default: 1, status: 'active' });
+  if (!account) {
+    return res.json({ connected: false, error: '默认 Stripe 收款账户不可用。' });
+  }
+  try {
+    const stripeClient = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const info = await stripeClient.accounts.retrieveCurrent({}, { timeout: 10000 });
+    return res.json({
+      connected: true,
+      mode: 'live',
+      accountName: (info.business_profile && info.business_profile.name) ||
+        (info.settings && info.settings.dashboard && info.settings.dashboard.display_name) ||
+        info.display_name || '',
+      chargesEnabled: Boolean(info.charges_enabled),
+      payoutsEnabled: Boolean(info.payouts_enabled),
+      country: info.country || '',
+      defaultCurrency: String(info.default_currency || '').toUpperCase(),
+      localAccountName: account.name
+    });
+  } catch (error) {
+    console.error('Stripe connection health check failed:', error.type || error.code || error.message);
+    return res.json({ connected: false, error: 'Stripe API 连接失败，请检查 Live 密钥是否有效或已被轮换。' });
+  }
 });
 
 router.post('/payment-accounts/create', requireAuth, (req, res) => {
@@ -470,6 +505,7 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
     is_default: is_default ? 1 : 0, sort_order: parseInt(sort_order) || 0
   });
 
+  db.ensureLiveStripeDefaultAccount();
   res.redirect('/admin/payment-accounts');
 });
 
@@ -580,11 +616,13 @@ router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
     is_default: is_default ? 1 : 0, sort_order: parseInt(sort_order) || 0
   });
 
+  db.ensureLiveStripeDefaultAccount();
   res.redirect('/admin/payment-accounts');
 });
 
 router.post('/payment-accounts/:id/delete', requireAuth, (req, res) => {
   db.delete('payment_accounts', parseInt(req.params.id));
+  db.ensureLiveStripeDefaultAccount();
   res.redirect('/admin/payment-accounts');
 });
 

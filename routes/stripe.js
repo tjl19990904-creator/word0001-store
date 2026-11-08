@@ -42,6 +42,9 @@ function parseConfig(account) {
 }
 
 function getStripeAccounts(includeInactive = false) {
+  // Keep the environment-managed Live Stripe default account available before
+  // any payment, confirmation or webhook lookup.
+  if (typeof db.ensureLiveStripeDefaultAccount === 'function') db.ensureLiveStripeDefaultAccount();
   const accounts = db.findAll('payment_accounts');
   return accounts.filter(account => {
     if (account.type !== 'stripe' || (!includeInactive && account.status !== 'active')) return false;

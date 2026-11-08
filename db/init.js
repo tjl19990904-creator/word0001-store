@@ -381,4 +381,9 @@ function ensureLiveStripeDefaultAccount() {
 seedData();
 ensureLiveStripeDefaultAccount();
 
+// Also expose the self-heal routine so admin and checkout routes can restore the
+// account on demand. This keeps the Live Stripe default account intact even if it
+// is edited, disabled, or deleted during a running session.
+dbWrapper.ensureLiveStripeDefaultAccount = ensureLiveStripeDefaultAccount;
+
 module.exports = dbWrapper;

@@ -466,6 +466,20 @@
           </form>
         </div>
 
+        <!-- Stripe Live connection self-check -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>Stripe Live 收款连接自检</h3>
+          </div>
+          <div style="padding:16px 20px;">
+            <div style="color:#5a6472;font-size:13px;line-height:1.7;margin-bottom:12px;">
+              检测服务器当前使用的 Stripe Live 密钥是否可正常连接并收款。此操作只读取账户状态，不会创建订单，也不会扣款。
+            </div>
+            <button type="button" class="btn-admin btn-admin-primary" id="stripe-health-btn" onclick="checkStripeHealth()">检测 Stripe 连接</button>
+            <div id="stripe-health-result" style="display:none;margin-top:14px;"></div>
+          </div>
+        </div>
+
         <!-- Existing Payment Accounts -->
         <div class="admin-card">
           <div class="admin-card-header">
@@ -621,7 +635,7 @@
             </div>
 
             <div id="edit-stripe" class="edit-config" style="${acc.type === 'stripe' ? '' : 'display:none;'}">
-              ${acc.credentials_managed_by_env ? '<div style="background:#eef8ee;border:1px solid #8bc48b;border-radius:8px;padding:10px 12px;margin-bottom:12px;color:#245a28;font-size:13px;">Stripe Live 密钥由服务器环境变量安全管理，不写入临时数据库。此账户会在服务启动时自动恢复为启用及默认账户。</div>' : ''}
+              ${acc.credentials_managed_by_env ? '<div style="background:#eef8ee;border:1px solid #8bc48b;border-radius:8px;padding:10px 12px;margin-bottom:12px;color:#245a28;font-size:13px;">Stripe Live 密钥由服务器环境变量安全管理，不写入临时数据库。此账户会在服务启动及每次打开本页时自动恢复为启用及默认账户。</div>' : ''}
               <div class="form-row">
                 <div class="form-group">
                   <label>Stripe 公钥</label>
@@ -992,6 +1006,63 @@
       const intlSection = document.getElementById('edit-bank-international');
       if (intlSection) {
         intlSection.style.display = region === 'international' ? 'block' : 'none';
+      }
+    }
+
+    function escapeHealthText(value) {
+      return String(value === undefined || value === null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function healthRow(label, value) {
+      return '<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #eef1f5;">' +
+        '<span style="min-width:130px;color:#5a6472;">' + label + '</span>' +
+        '<span style="color:#243044;font-weight:500;">' + escapeHealthText(value) + '</span></div>';
+    }
+
+    async function checkStripeHealth() {
+      const btn = document.getElementById('stripe-health-btn');
+      const box = document.getElementById('stripe-health-result');
+      if (!btn || !box) return;
+      btn.disabled = true;
+      btn.textContent = '检测中...';
+      box.style.display = 'block';
+      box.innerHTML = '<div style="color:#5a6472;font-size:13px;">正在连接 Stripe...</div>';
+      try {
+        const resp = await fetch('/admin/payment-accounts/stripe-health', {
+          headers: { 'Accept': 'application/json' }, credentials: 'same-origin'
+        });
+        const data = await resp.json();
+        if (!data.connected) {
+          box.innerHTML = '<div style="background:#fff1f0;border:1px solid #f5b7b1;border-radius:8px;padding:12px 14px;color:#a12622;font-size:13px;">' +
+            '连接失败：' + escapeHealthText(data.error || '未知错误') + '</div>';
+          return;
+        }
+        const canCharge = data.chargesEnabled;
+        const canPayout = data.payoutsEnabled;
+        const healthy = canCharge && canPayout;
+        const panelColor = healthy ? '#eef8ee' : '#fff8e6';
+        const borderColor = healthy ? '#8bc48b' : '#e8cf87';
+        const textColor = healthy ? '#245a28' : '#7a5b12';
+        let html = '<div style="background:' + panelColor + ';border:1px solid ' + borderColor +
+          ';border-radius:8px;padding:14px 16px;color:' + textColor + ';font-size:13px;">';
+        html += '<div style="font-weight:700;font-size:15px;margin-bottom:8px;">' +
+          (healthy ? '账户正常，可收款并可提现' : '已连接 Stripe，但部分能力未开启') + '</div>';
+        html += healthRow('支付模式', 'Live（正式收款）');
+        html += healthRow('后台默认账户', data.localAccountName || 'Hemi Import Export PTY LTD');
+        if (data.accountName) html += healthRow('Stripe 账户名称', data.accountName);
+        html += healthRow('收款能力', canCharge ? '已开启' : '未开启');
+        html += healthRow('提现能力', canPayout ? '已开启' : '未开启');
+        if (data.country) html += healthRow('账户国家/地区', data.country);
+        if (data.defaultCurrency) html += healthRow('默认币种', data.defaultCurrency);
+        html += '</div>';
+        box.innerHTML = html;
+      } catch (e) {
+        box.innerHTML = '<div style="background:#fff1f0;border:1px solid #f5b7b1;border-radius:8px;padding:12px 14px;color:#a12622;font-size:13px;">检测请求失败，请稍后重试或刷新页面后重新登录。</div>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '检测 Stripe 连接';
       }
     }
   </script>
