@@ -108,7 +108,10 @@
                 <input type="number" id="qty-input" value="1" min="1" max="${product.stock}" readonly>
                 <button onclick="changeQty(1, 'qty-input')">+</button>
               </div>
-              <button class="btn btn-primary btn-lg" style="width:100%;" onclick="addToCart(${product.id}, parseInt(document.getElementById('qty-input').value))">
+              <button type="button" class="btn btn-primary btn-lg" style="width:100%;" onclick="buyNow(${product.id}, parseInt(document.getElementById('qty-input').value))">
+                Buy Now - Proceed to Payment
+              </button>
+              <button type="button" class="btn btn-secondary btn-lg" style="width:100%; margin-top:10px;" onclick="addToCart(${product.id}, parseInt(document.getElementById('qty-input').value))">
                 Add to Cart
               </button>
             ` : `
@@ -143,6 +146,7 @@
             <div style="margin-bottom:12px;">
               <span class="product-price">$${p.price.toFixed(2)}</span>
             </div>
+            <button class="btn-buy-now" onclick="buyNow(${p.id})">Buy Now - Proceed to Payment</button>
             <button class="btn-add-cart" onclick="addToCart(${p.id})">Add to Cart</button>
           </div>
         </div>

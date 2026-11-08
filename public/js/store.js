@@ -14,30 +14,47 @@ function updateCartCount() {
     .catch(() => {});
 }
 
-// Add to cart
-function addToCart(productId, quantity = 1) {
-  const formData = new FormData();
-  formData.append('productId', productId);
-  formData.append('quantity', quantity);
-
-  fetch('/cart/add', {
-    method: 'POST',
-    body: formData
-  })
-  .then(r => {
-    if (r.headers.get('content-type')?.includes('json')) return r.json();
-    return r.text().then(() => ({ success: true }));
-  })
-  .then(data => {
-    if (data.success !== false) {
-      updateCartCount();
-      showToast('Added to cart!', 'success');
+// Add to cart using URL-encoded fields supported by Express body parsing.
+async function addToCart(productId, quantity = 1) {
+  try {
+    const response = await fetch('/cart/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'Accept': 'application/json'
+      },
+      body: new URLSearchParams({ productId: String(productId), quantity: String(quantity) })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Unable to add this item to your cart.');
     }
-  })
-  .catch(() => {
-    // fallback: redirect to cart
-    window.location.href = '/cart';
-  });
+    updateCartCount();
+    showToast('Added to cart!', 'success');
+  } catch (error) {
+    showToast(error.message || 'Unable to add this item to your cart. Please try again.', 'error');
+  }
+}
+
+// Buy now skips the cart page: persist this item in the session, then open checkout.
+async function buyNow(productId, quantity = 1) {
+  try {
+    const response = await fetch('/cart/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'Accept': 'application/json'
+      },
+      body: new URLSearchParams({ productId: String(productId), quantity: String(quantity) })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Unable to prepare checkout for this item.');
+    }
+    window.location.assign('/checkout');
+  } catch (error) {
+    showToast(error.message || 'Unable to open checkout. Please try again.', 'error');
+  }
 }
 
 // Toast notification

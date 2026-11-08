@@ -110,6 +110,7 @@
                 <span class="product-price">$${p.price.toFixed(2)}</span>
                 ${p.compare_price ? `<span class="compare-price">$${p.compare_price.toFixed(2)}</span>` : ''}
               </div>
+              <button class="btn-buy-now" onclick="buyNow(${p.id})">Buy Now - Proceed to Payment</button>
               <button class="btn-add-cart" onclick="addToCart(${p.id})">Add to Cart</button>
             </div>
           </div>

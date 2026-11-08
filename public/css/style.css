@@ -266,10 +266,10 @@ img { max-width: 100%; height: auto; display: block; }
   overflow: hidden;
 }
 
+.product-card .btn-buy-now,
 .product-card .btn-add-cart {
   width: 100%;
   padding: 10px;
-  background: var(--primary);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -279,8 +279,18 @@ img { max-width: 100%; height: auto; display: block; }
   font-size: 14px;
 }
 
+.product-card .btn-buy-now {
+  margin-bottom: 8px;
+  background: var(--primary);
+}
+
+.product-card .btn-buy-now:hover,
 .product-card .btn-add-cart:hover {
   background: var(--primary-dark);
+}
+
+.product-card .btn-add-cart {
+  background: #667085;
 }
 
 .product-card .badge {
