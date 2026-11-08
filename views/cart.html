@@ -33,9 +33,13 @@
   <script src="/js/store.js"></script>
   <script>
     const cartItems = {{data:json:cartItems}};
+    const paymentAccounts = {{data:json:paymentAccounts}};
     const subtotal = {{data.subtotal}};
     const shippingCost = {{data.shippingCost}};
+    const tax = {{data.tax}};
     const total = {{data.total}};
+    const stripeAccount = paymentAccounts.find(account => account.type === 'stripe' && account.is_configured);
+    let stripeState = null;
 
     const container = document.getElementById('cart-container');
     if (cartItems.length === 0) {
@@ -51,7 +55,7 @@
         <div class="cart-items">
           ${cartItems.map(item => `
             <div class="cart-item">
-              <img src="${item.primary_image}" alt="${item.name}" 
+              <img src="${item.primary_image}" alt="${item.name}"
                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2280%22 height=%2280%22/%3E%3C/svg%3E'">
               <div>
                 <div class="item-name"><a href="/products/${item.slug}">${item.name}</a></div>
@@ -59,33 +63,178 @@
               </div>
               <form method="POST" action="/cart/update" style="display:flex; align-items:center; gap:8px;">
                 <input type="hidden" name="productId" value="${item.id}">
-                <button type="button" onclick="this.nextElementSibling.value=Math.max(1,parseInt(this.nextElementSibling.value)-1)" style="width:28px;height:28px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;border-radius:4px;">-</button>
+                <button type="button" aria-label="Decrease quantity" onclick="this.nextElementSibling.value=Math.max(1,parseInt(this.nextElementSibling.value)-1)" style="width:28px;height:28px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;border-radius:4px;">-</button>
                 <input type="number" name="quantity" value="${item.quantity}" min="1" style="width:50px; text-align:center; padding:4px; border:1px solid #e0e0e0; border-radius:4px;">
-                <button type="button" onclick="this.previousElementSibling.value=parseInt(this.previousElementSibling.value)+1" style="width:28px;height:28px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;border-radius:4px;">+</button>
+                <button type="button" aria-label="Increase quantity" onclick="this.previousElementSibling.value=parseInt(this.previousElementSibling.value)+1" style="width:28px;height:28px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;border-radius:4px;">+</button>
                 <button type="submit" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">Update</button>
               </form>
               <div class="item-total">$${item.lineTotal.toFixed(2)}</div>
               <form method="POST" action="/cart/remove" style="display:inline;">
                 <input type="hidden" name="productId" value="${item.id}">
-                <button type="submit" class="remove-btn" style="background:none;border:none;color:#dc3545;font-size:20px;cursor:pointer;">x</button>
+                <button type="submit" class="remove-btn" aria-label="Remove item" style="background:none;border:none;color:#dc3545;font-size:20px;cursor:pointer;">x</button>
               </form>
             </div>
           `).join('')}
         </div>
+
         <div class="cart-summary">
           <div class="summary-box">
             <div class="summary-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
             <div class="summary-row"><span>Shipping</span><span>${shippingCost === 0 ? 'Free' : '$' + shippingCost.toFixed(2)}</span></div>
+            <div class="summary-row"><span>Tax</span><span>$${tax.toFixed(2)}</span></div>
             <div class="summary-row summary-total"><span>Total</span><span>$${total.toFixed(2)}</span></div>
-            <div style="margin-top:20px;">
-              <a href="/checkout" class="btn btn-primary btn-block btn-lg">Proceed to Checkout</a>
-            </div>
-            <div style="margin-top:12px; text-align:center;">
-              <a href="/products" style="font-size:14px;">Continue Shopping</a>
-            </div>
           </div>
         </div>
+
+        <section class="cart-direct-checkout" aria-labelledby="cart-payment-title">
+          <h2 id="cart-payment-title">Complete payment in your cart</h2>
+          <p class="cart-payment-intro">Enter your contact and delivery details, then pay securely by card without leaving this page.</p>
+          <div class="checkout-grid">
+            <form id="cart-payment-form" class="checkout-form" novalidate>
+              <div class="form-section">
+                <h3>Contact Information</h3>
+                <div class="form-row">
+                  <div class="form-group"><label for="cart-first-name">First Name *</label><input id="cart-first-name" name="firstName" autocomplete="given-name" required></div>
+                  <div class="form-group"><label for="cart-last-name">Last Name *</label><input id="cart-last-name" name="lastName" autocomplete="family-name" required></div>
+                </div>
+                <div class="form-group"><label for="cart-email">Email *</label><input type="email" id="cart-email" name="email" autocomplete="email" required></div>
+                <div class="form-group"><label for="cart-phone">Phone *</label><input type="tel" id="cart-phone" name="phone" autocomplete="tel" required></div>
+              </div>
+              <div class="form-section">
+                <h3>Delivery Address</h3>
+                <div class="form-group"><label for="cart-address">Street Address *</label><input id="cart-address" name="address" autocomplete="street-address" required></div>
+                <div class="form-row">
+                  <div class="form-group"><label for="cart-city">City *</label><input id="cart-city" name="city" autocomplete="address-level2" required></div>
+                  <div class="form-group"><label for="cart-state">State / Province *</label><input id="cart-state" name="state" autocomplete="address-level1" required></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label for="cart-zip">ZIP / Postal Code *</label><input id="cart-zip" name="zip" autocomplete="postal-code" required></div>
+                  <div class="form-group"><label for="cart-country">Country *</label><input id="cart-country" name="country" value="United States" autocomplete="country-name" required></div>
+                </div>
+              </div>
+              <div class="form-section">
+                <h3>Payment Method</h3>
+                ${stripeAccount ? '<div class="payment-method selected"><span aria-hidden="true">Card</span><span>Stripe secure card payment</span></div>' : '<p class="payment-not-configured">Card payment is temporarily unavailable. You can use the full checkout page for other available payment methods.</p>'}
+                <div id="cart-stripe-payment-box" style="display:none; margin-top:16px;">
+                  <div id="cart-stripe-payment-element" style="padding:14px; border:1px solid #ddd; border-radius:6px;"></div>
+                  <button type="button" class="btn btn-primary btn-lg" id="cart-stripe-confirm-btn" style="width:100%; margin-top:12px;">Pay securely</button>
+                </div>
+                <div id="cart-payment-error" role="alert" style="color:#f44336; margin-top:12px; display:none;"></div>
+              </div>
+              <div class="form-section">
+                <h3>Order Notes (Optional)</h3>
+                <div class="form-group"><textarea id="cart-notes" name="notes" rows="3" placeholder="Any special instructions for your order..."></textarea></div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg" id="cart-pay-start" style="width:100%;" ${stripeAccount ? '' : 'disabled'}>Continue to secure payment</button>
+              <p class="cart-payment-safe">Your card details are entered securely in Stripe. This site never receives or stores your card number.</p>
+            </form>
+            <aside class="checkout-summary">
+              <h3>Order Total</h3>
+              <div class="summary-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
+              <div class="summary-row"><span>Shipping</span><span>${shippingCost === 0 ? 'Free' : '$' + shippingCost.toFixed(2)}</span></div>
+              <div class="summary-row"><span>Tax</span><span>$${tax.toFixed(2)}</span></div>
+              <div class="summary-row summary-total"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+              <a href="/checkout" class="btn btn-secondary btn-block" style="margin-top:20px;">Other payment options</a>
+            </aside>
+          </div>
+        </section>
+        <div style="margin-top:20px;text-align:center;"><a href="/products" style="font-size:14px;">Continue Shopping</a></div>
       `;
+      setupCartStripePayment();
+    }
+
+    function loadStripeJS() {
+      return new Promise((resolve, reject) => {
+        if (window.Stripe) return resolve();
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.onload = () => window.Stripe ? resolve() : reject(new Error('Stripe.js did not initialize.'));
+        script.onerror = () => reject(new Error('Unable to load the secure Stripe payment form.'));
+        document.head.appendChild(script);
+      });
+    }
+
+    function setupCartStripePayment() {
+      const form = document.getElementById('cart-payment-form');
+      if (!form || !stripeAccount) return;
+      const startButton = document.getElementById('cart-pay-start');
+      const errorEl = document.getElementById('cart-payment-error');
+      const paymentBox = document.getElementById('cart-stripe-payment-box');
+      const confirmButton = document.getElementById('cart-stripe-confirm-btn');
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        errorEl.style.display = 'none';
+        errorEl.textContent = '';
+        if (!form.reportValidity()) return;
+        startButton.disabled = true;
+        startButton.textContent = 'Preparing secure payment...';
+        try {
+          await loadStripeJS();
+          const data = Object.fromEntries(new FormData(form).entries());
+          data.paymentAccountId = stripeAccount.id;
+          data.paymentMethod = 'stripe';
+          const response = await fetch('/payment/stripe/create-payment-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success || !result.clientSecret || !result.publishableKey) {
+            throw new Error(result.error || 'Unable to start Stripe payment.');
+          }
+          const stripeClient = window.Stripe(result.publishableKey);
+          const elements = stripeClient.elements({ clientSecret: result.clientSecret });
+          const paymentElement = elements.create('payment');
+          paymentBox.style.display = 'block';
+          paymentElement.mount('#cart-stripe-payment-element');
+          form.querySelectorAll('input, textarea').forEach(input => input.readOnly = true);
+          stripeState = { stripe: stripeClient, elements, orderId: result.orderId, orderNumber: result.orderNumber };
+          startButton.hidden = true;
+          confirmButton.focus();
+        } catch (error) {
+          console.error('Cart Stripe initialization error:', error);
+          errorEl.textContent = error.message || 'Unable to start payment. Please try again.';
+          errorEl.style.display = 'block';
+          startButton.disabled = false;
+          startButton.textContent = 'Continue to secure payment';
+        }
+      });
+
+      confirmButton.addEventListener('click', async () => {
+        if (!stripeState) return;
+        confirmButton.disabled = true;
+        confirmButton.textContent = 'Confirming payment...';
+        errorEl.style.display = 'none';
+        try {
+          const { error, paymentIntent } = await stripeState.stripe.confirmPayment({
+            elements: stripeState.elements,
+            confirmParams: { return_url: `${window.location.origin}/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}` },
+            redirect: 'if_required'
+          });
+          if (error) throw new Error(error.message || 'Payment could not be completed.');
+          if (!paymentIntent) throw new Error('Stripe did not return a payment status. Check your order before retrying.');
+          if (paymentIntent.status === 'processing') {
+            window.location.href = `/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
+            return;
+          }
+          if (paymentIntent.status !== 'succeeded') throw new Error('Payment is not complete yet. Follow any verification prompt and try again.');
+          const response = await fetch('/payment/stripe/confirm-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: stripeState.orderId, paymentIntentId: paymentIntent.id })
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.error || 'Payment confirmation is delayed.');
+          window.location.href = `/payment/success?order=${encodeURIComponent(result.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
+        } catch (error) {
+          console.error('Cart Stripe confirmation error:', error);
+          errorEl.textContent = error.message || 'Payment failed. Please try again.';
+          errorEl.style.display = 'block';
+          confirmButton.disabled = false;
+          confirmButton.textContent = 'Pay securely';
+        }
+      });
     }
   </script>
 </body>

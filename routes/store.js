@@ -175,10 +175,25 @@ router.get('/cart', (req, res) => {
   const freeShipThreshold = parseFloat(settings.free_shipping_threshold || 50);
   const flatRate = parseFloat(settings.flat_shipping_rate || 5.99);
   const shippingCost = subtotal >= freeShipThreshold || subtotal === 0 ? 0 : flatRate;
-  const total = subtotal + shippingCost;
+  const taxRate = parseFloat(settings.tax_rate || 0);
+  const tax = Math.round(subtotal * taxRate) / 100;
+  const total = subtotal + shippingCost + tax;
 
-  renderPage(res, 'cart.html', { 
-    cartItems, subtotal, shippingCost, total, pageTitle: 'Shopping Cart' 
+  // Expose only public account labels and Stripe availability; never send payment credentials to the browser.
+  const paymentAccounts = db.findAll('payment_accounts', { where: { status: 'active' } })
+    .map(account => {
+      let config = {};
+      try { config = JSON.parse(account.config || '{}'); } catch { config = {}; }
+      return {
+        id: account.id,
+        name: account.name,
+        type: account.type,
+        is_configured: account.type === 'stripe' ? isStripeConfigured(config) : false
+      };
+    });
+
+  renderPage(res, 'cart.html', {
+    cartItems, subtotal, shippingCost, tax, total, paymentAccounts, pageTitle: 'Shopping Cart'
   });
 });
 

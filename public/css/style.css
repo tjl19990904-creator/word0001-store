@@ -758,6 +758,44 @@ img { max-width: 100%; height: auto; display: block; }
   font-weight: 500;
 }
 
+/* ===== Cart direct payment ===== */
+.cart-direct-checkout {
+  margin: 36px 0 20px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.cart-direct-checkout h2 {
+  margin-bottom: 8px;
+  font-size: 24px;
+}
+
+.cart-payment-intro {
+  margin-bottom: 24px;
+  color: var(--gray);
+}
+
+.cart-payment-safe {
+  margin-top: 12px;
+  color: var(--gray);
+  font-size: 13px;
+}
+
+.payment-not-configured {
+  padding: 12px;
+  border: 1px solid #f2d28b;
+  border-radius: 6px;
+  background: #fff9e9;
+  color: #755500;
+}
+
+@media (max-width: 768px) {
+  .cart-direct-checkout { padding: 18px; }
+  .cart-direct-checkout .checkout-summary { position: static; }
+}
+
 /* ===== Order Confirmation ===== */
 .order-confirmation {
   text-align: center;
