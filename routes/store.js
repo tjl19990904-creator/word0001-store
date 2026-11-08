@@ -7,6 +7,19 @@ function getSettings() {
   return db.getAllSettings();
 }
 
+function isStripeConfigured(config) {
+  const mode = process.env.STRIPE_MODE === 'test' || process.env.STRIPE_MODE === 'live'
+    ? process.env.STRIPE_MODE
+    : (process.env.NODE_ENV === 'production' ? 'live' : 'test');
+  const secretKey = process.env.STRIPE_SECRET_KEY || config.secret_key || '';
+  const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || config.publishable_key || '';
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || config.webhook_secret || '';
+  const correctPrefixes = mode === 'live'
+    ? secretKey.startsWith('sk_live_') && publishableKey.startsWith('pk_live_')
+    : secretKey.startsWith('sk_test_') && publishableKey.startsWith('pk_test_');
+  return Boolean(correctPrefixes && (mode !== 'live' || webhookSecret));
+}
+
 // Helper: render template
 function renderPage(res, templateName, data = {}) {
   const settings = getSettings();
@@ -246,16 +259,30 @@ router.get('/checkout', (req, res) => {
   const flatRate = parseFloat(settings.flat_shipping_rate || 5.99);
   const shippingCost = subtotal >= freeShipThreshold ? 0 : flatRate;
   const taxRate = parseFloat(settings.tax_rate || 0);
-  const tax = subtotal * (taxRate / 100);
+  const tax = Math.round(subtotal * taxRate) / 100;
   const total = subtotal + shippingCost + tax;
 
-  const paymentAccounts = db.findAll('payment_accounts', { where: { status: 'active' } });
-  paymentAccounts.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-
-  // Parse config JSON for each account so frontend can check if payment is configured
-  paymentAccounts.forEach(a => {
-    try { a.config_data = JSON.parse(a.config || '{}'); } catch { a.config_data = {}; }
-  });
+  // Only expose public payment labels and a boolean configuration state to the browser.
+  // Never serialize provider credentials or bank account configuration into the checkout page.
+  const paymentAccounts = db.findAll('payment_accounts', { where: { status: 'active' } })
+    .map(account => {
+      let config = {};
+      try { config = JSON.parse(account.config || '{}'); } catch { config = {}; }
+      let isConfigured = true;
+      if (account.type === 'stripe') {
+        isConfigured = isStripeConfigured(config);
+      }
+      if (account.type === 'airwallex') isConfigured = Boolean(config.client_id && config.api_key);
+      if (account.type === 'cashapp') isConfigured = Boolean(config.square_app_id && config.square_access_token && config.square_location_id);
+      return {
+        id: account.id,
+        name: account.name,
+        type: account.type,
+        sort_order: account.sort_order || 0,
+        is_configured: isConfigured
+      };
+    })
+    .sort((a, b) => a.sort_order - b.sort_order);
 
   renderPage(res, 'checkout.html', { 
     cartItems, subtotal, shippingCost, tax, total, paymentAccounts, pageTitle: 'Checkout' 
@@ -287,7 +314,7 @@ router.post('/checkout/place-order', (req, res) => {
   const flatRate = parseFloat(settings.flat_shipping_rate || 5.99);
   const shippingCost = subtotal >= freeShipThreshold ? 0 : flatRate;
   const taxRate = parseFloat(settings.tax_rate || 0);
-  const tax = subtotal * (taxRate / 100);
+  const tax = Math.round(subtotal * taxRate) / 100;
   const total = subtotal + shippingCost + tax;
 
   const orderNumber = 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 1000);

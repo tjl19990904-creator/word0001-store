@@ -20,13 +20,14 @@ const defaultDb = {
   orders: [],
   order_items: [],
   payment_accounts: [],
+  payment_events: [],
   withdrawal_accounts: [],
   shipments: [],
   shipment_tracking: [],
   settings: {},
   counters: {
     users: 0, categories: 0, products: 0, customers: 0,
-    orders: 0, order_items: 0, payment_accounts: 0,
+    orders: 0, order_items: 0, payment_accounts: 0, payment_events: 0,
     withdrawal_accounts: 0, shipments: 0, shipment_tracking: 0
   }
 };
@@ -178,6 +179,19 @@ const dbWrapper = {
 
 // ===== Seed Default Data =====
 function seedData() {
+  // Remove the retired Shenzhi bank-payment entry from existing JSON databases.
+  const retiredAccountNames = new Set(['shenzhi', 'shen zhi', '神州', '神州收款']);
+  const beforeCleanup = db.payment_accounts.length;
+  db.payment_accounts = db.payment_accounts.filter(account => {
+    let config = {};
+    try { config = JSON.parse(account.config || '{}'); } catch { config = {}; }
+    const name = String(account.name || '').trim().toLowerCase();
+    const isRetiredBankAccount = account.type === 'bank' &&
+      (retiredAccountNames.has(name) || String(config.bank_account_holder || '').trim() === '沈志');
+    return !isRetiredBankAccount;
+  });
+  if (db.payment_accounts.length !== beforeCleanup) save();
+
   // Default admin
   if (db.users.length === 0) {
     const hashedPassword = bcrypt.hashSync('admin123456', 10);

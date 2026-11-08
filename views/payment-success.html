@@ -27,9 +27,9 @@
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
     </div>
-    <h1 style="font-size:2em; margin-bottom:16px;">Payment Successful!</h1>
-    <p style="font-size:1.1em; color:#666; margin-bottom:8px;">Thank you for your purchase. Your payment has been processed successfully.</p>
-    <p style="margin-bottom:24px;">A confirmation email will be sent to you shortly.</p>
+    <h1 id="payment-heading" style="font-size:2em; margin-bottom:16px;">Payment Successful!</h1>
+    <p id="payment-message" style="font-size:1.1em; color:#666; margin-bottom:8px;">Thank you for your purchase. Your payment has been processed successfully.</p>
+    <p id="payment-followup" style="margin-bottom:24px;">A confirmation email will be sent to you shortly.</p>
 
     <div style="background:#f9f9f9; border-radius:8px; padding:24px; margin-bottom:32px; text-align:left;">
       <h3 style="margin-bottom:16px;">Order Details</h3>
@@ -49,6 +49,11 @@
     const isPaid = {{data.isPaid}};
 
     const infoEl = document.getElementById('order-info');
+    if (!isPaid) {
+      document.getElementById('payment-heading').textContent = 'Payment Processing';
+      document.getElementById('payment-message').textContent = 'We have not yet received final confirmation from Stripe. Your order will update automatically when payment is confirmed.';
+      document.getElementById('payment-followup').textContent = 'Please do not submit another payment. You can refresh this page or contact support if the status does not update.';
+    }
     if (order) {
       let html = `
         <p style="margin-bottom:8px;"><strong>Order Number:</strong> ${order.order_number || 'N/A'}</p>

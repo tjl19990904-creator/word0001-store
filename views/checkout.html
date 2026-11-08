@@ -98,7 +98,11 @@
           <button type="submit" class="btn btn-primary btn-lg" id="place-order-btn" style="width:100%;">
             Place Order
           </button>
-          <div id="payment-error" style="color:#f44336; text-align:center; margin-top:12px; display:none;"></div>
+          <div id="stripe-payment-box" style="display:none; margin-top:18px;">
+            <div id="stripe-payment-element" style="padding:14px; border:1px solid #ddd; border-radius:6px;"></div>
+            <button type="button" class="btn btn-primary btn-lg" id="stripe-confirm-btn" style="width:100%; margin-top:12px;">Pay securely</button>
+          </div>
+          <div id="payment-error" role="alert" style="color:#f44336; text-align:center; margin-top:12px; display:none;"></div>
         </form>
       </div>
 
@@ -122,6 +126,7 @@
     const shippingCost = {{data.shippingCost}};
 
     let selectedPaymentAccount = null;
+    let stripeState = null;
 
     // Render summary items
     const sumEl = document.getElementById('summary-items');
@@ -203,34 +208,32 @@
     }
 
     function selectPayment(el, accountId) {
-      document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
-      el.classList.add('selected');
-      const radio = el.querySelector('input[type="radio"]');
+      document.querySelectorAll('.payment-method').forEach(method => method.classList.remove('selected'));
+      if (el) el.classList.add('selected');
+      const radio = el && el.querySelector('input[type="radio"]');
       if (radio) radio.checked = true;
-      selectedPaymentAccount = paymentAccounts.find(a => a.id == accountId);
-      
-      // Update button text
+      selectedPaymentAccount = paymentAccounts.find(account => String(account.id) === String(accountId));
+
+      // Discard any PaymentIntent UI if the customer switches providers/accounts.
+      stripeState = null;
+      document.getElementById('stripe-payment-box').style.display = 'none';
+      document.getElementById('stripe-payment-element').innerHTML = '';
       const btn = document.getElementById('place-order-btn');
-      if (selectedPaymentAccount) {
-        const hasStripe = selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key;
-        const hasAirwallex = selectedPaymentAccount.type === 'airwallex' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.client_id && selectedPaymentAccount.config_data.api_key;
-        const hasCashApp = selectedPaymentAccount.type === 'cashapp' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.square_app_id && selectedPaymentAccount.config_data.square_access_token;
-        if (hasStripe) {
-          btn.textContent = 'Pay with Stripe';
-        } else if (hasAirwallex) {
-          btn.textContent = 'Pay with Airwallex';
-        } else if (hasCashApp) {
-          btn.textContent = 'Pay with Cash App';
-        } else if (selectedPaymentAccount.type === 'stripe') {
-          btn.textContent = 'Place Order (Stripe Not Configured)';
-        } else if (selectedPaymentAccount.type === 'airwallex') {
-          btn.textContent = 'Place Order (Airwallex Not Configured)';
-        } else if (selectedPaymentAccount.type === 'cashapp') {
-          btn.textContent = 'Place Order (Cash App Not Configured)';
-        } else {
-          btn.textContent = 'Place Order';
-        }
-      }
+      btn.hidden = false;
+      btn.disabled = false;
+      if (!selectedPaymentAccount) return;
+
+      const onlineType = ['stripe', 'airwallex', 'cashapp'].includes(selectedPaymentAccount.type);
+      const configured = Boolean(selectedPaymentAccount.is_configured);
+      const labels = { stripe: 'Pay with Stripe', airwallex: 'Pay with Airwallex', cashapp: 'Pay with Cash App' };
+      btn.textContent = onlineType
+        ? (configured ? labels[selectedPaymentAccount.type] : `${selectedPaymentAccount.name} is not configured`)
+        : 'Place Order';
+      btn.disabled = onlineType && !configured;
+    }
+
+    if (paymentAccounts.length) {
+      selectPayment(document.querySelector('.payment-method'), paymentAccounts[0].id);
     }
 
     // Load Airwallex.js
@@ -244,6 +247,61 @@
         document.head.appendChild(script);
       });
     }
+
+    function loadStripeJS() {
+      return new Promise((resolve, reject) => {
+        if (window.Stripe) return resolve();
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.onload = () => window.Stripe ? resolve() : reject(new Error('Stripe.js did not initialize.'));
+        script.onerror = () => reject(new Error('Unable to load the secure Stripe payment form.'));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function confirmStripePayment() {
+      if (!stripeState) return;
+      const confirmBtn = document.getElementById('stripe-confirm-btn');
+      const errorEl = document.getElementById('payment-error');
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Confirming payment...';
+      errorEl.style.display = 'none';
+      try {
+        const { error, paymentIntent } = await stripeState.stripe.confirmPayment({
+          elements: stripeState.elements,
+          confirmParams: {
+            return_url: `${window.location.origin}/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}`
+          },
+          redirect: 'if_required'
+        });
+        if (error) throw new Error(error.message || 'Payment could not be completed.');
+        if (!paymentIntent) throw new Error('Stripe did not return a payment status. Please check your order before retrying.');
+        if (paymentIntent.status === 'processing') {
+          window.location.href = `/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
+          return;
+        }
+        if (paymentIntent.status !== 'succeeded') {
+          throw new Error('Payment is not complete yet. Please follow any verification prompt and try again.');
+        }
+
+        const response = await fetch('/payment/stripe/confirm-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: stripeState.orderId, paymentIntentId: paymentIntent.id })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || 'Payment confirmation is delayed.');
+        window.location.href = `/payment/success?order=${encodeURIComponent(result.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
+      } catch (error) {
+        console.error('Stripe confirmation error:', error);
+        errorEl.textContent = error.message || 'Payment failed. Please try again.';
+        errorEl.style.display = 'block';
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Pay securely';
+      }
+    }
+
+    document.getElementById('stripe-confirm-btn').addEventListener('click', confirmStripePayment);
 
     // Handle form submission
     document.getElementById('checkout-form').addEventListener('submit', async function(e) {
@@ -280,26 +338,47 @@
       btn.textContent = 'Processing...';
 
       try {
-        const hasStripe = selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.secret_key;
-        const hasAirwallex = selectedPaymentAccount.type === 'airwallex' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.client_id && selectedPaymentAccount.config_data.api_key;
-        const hasCashApp = selectedPaymentAccount.type === 'cashapp' && selectedPaymentAccount.config_data && selectedPaymentAccount.config_data.square_app_id && selectedPaymentAccount.config_data.square_access_token;
+        const hasStripe = selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.is_configured;
+        const hasAirwallex = selectedPaymentAccount.type === 'airwallex' && selectedPaymentAccount.is_configured;
+        const hasCashApp = selectedPaymentAccount.type === 'cashapp' && selectedPaymentAccount.is_configured;
+
+        if (selectedPaymentAccount.type === 'stripe' && !hasStripe) {
+          throw new Error('Stripe is not configured. Please contact the store administrator.');
+        }
+        if (selectedPaymentAccount.type === 'airwallex' && !hasAirwallex) {
+          throw new Error('Airwallex is not configured. Please contact the store administrator.');
+        }
+        if (selectedPaymentAccount.type === 'cashapp' && !hasCashApp) {
+          throw new Error('Cash App is not configured. Please contact the store administrator.');
+        }
 
         if (hasStripe) {
-          // Stripe online payment - create checkout session
-          const response = await fetch('/payment/create-checkout-session', {
+          await loadStripeJS();
+          const response = await fetch('/payment/stripe/create-payment-intent', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
           });
-          
           const result = await response.json();
-          
-          if (result.success && result.url) {
-            // Redirect to Stripe Checkout
-            window.location.href = result.url;
-          } else {
-            throw new Error(result.error || 'Failed to create payment session');
+          if (!response.ok || !result.success || !result.clientSecret || !result.publishableKey) {
+            throw new Error(result.error || 'Unable to start Stripe payment.');
           }
+
+          const stripeClient = window.Stripe(result.publishableKey);
+          const elements = stripeClient.elements({ clientSecret: result.clientSecret });
+          const paymentElement = elements.create('payment');
+          document.getElementById('stripe-payment-box').style.display = 'block';
+          paymentElement.mount('#stripe-payment-element');
+          stripeState = {
+            stripe: stripeClient,
+            elements,
+            orderId: result.orderId,
+            orderNumber: result.orderNumber,
+            accountId: selectedPaymentAccount.id
+          };
+          btn.hidden = true;
+          document.getElementById('stripe-confirm-btn').focus();
+          return;
         } else if (hasAirwallex) {
           // Airwallex payment - create payment intent then redirect to hosted page
           const response = await fetch('/payment/create-payment-intent', {

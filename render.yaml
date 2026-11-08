@@ -10,5 +10,7 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: STRIPE_MODE
+        value: live
     healthCheckPath: /
     autoDeploy: true

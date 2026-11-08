@@ -77,7 +77,8 @@
                   1. 注册/登录 <a href="https://dashboard.stripe.com/register" target="_blank" style="color:#635BFF;">Stripe Dashboard</a><br>
                   2. 左侧菜单 → Developers → API Keys<br>
                   3. 复制 <code>Publishable key</code>（pk_ 开头）和 <code>Secret key</code>（sk_ 开头）<br>
-                  4. 完成账户激活后，测试密钥自动切换为正式密钥
+                  4. 在 Stripe Developers → Webhooks 添加 <code>https://word0001.com/payment/webhook</code>，监听 <code>payment_intent.succeeded</code>、<code>payment_intent.payment_failed</code> 和 <code>payment_intent.canceled</code>，再把签名密钥（whsec_ 开头）填入下方<br>
+                  5. 测试密钥与正式密钥需分别配置对应的 webhook 签名密钥
                 </p>
               </div>
               <div class="form-row">
@@ -93,7 +94,7 @@
               <div class="form-group">
                 <label>Webhook 密钥</label>
                 <input type="text" name="webhook_secret" placeholder="whsec_...">
-                <small style="color:#999;">Webhook 密钥可选，用于自动确认支付。如不填写，支付成功后需手动确认订单状态。</small>
+                <small style="color:#999;">建议必填：Stripe Dashboard Webhooks 中 endpoint 的签名密钥（whsec_）。用于安全、自动且可靠地确认订单状态。</small>
               </div>
             </div>
 
