@@ -20,6 +20,13 @@ function getSettings() {
   return db.getAllSettings();
 }
 
+function isLiveStripeConfiguredInEnvironment() {
+  return process.env.STRIPE_MODE === 'live' &&
+    String(process.env.STRIPE_PUBLISHABLE_KEY || '').startsWith('pk_live_') &&
+    String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') &&
+    String(process.env.STRIPE_WEBHOOK_SECRET || '').startsWith('whsec_');
+}
+
 // Helper: render admin template
 function renderAdmin(res, templateName, data = {}) {
   const settings = getSettings();
@@ -338,6 +345,7 @@ router.get('/payment-accounts', requireAuth, (req, res) => {
   
   accounts.forEach(a => {
     try { a.config_data = JSON.parse(a.config || '{}'); } catch { a.config_data = {}; }
+    a.credentials_managed_by_env = a.type === 'stripe' && isLiveStripeConfiguredInEnvironment();
   });
 
   renderAdmin(res, 'payment-accounts.html', { 
@@ -364,7 +372,9 @@ router.post('/payment-accounts/create', requireAuth, (req, res) => {
   if (type === 'paypal') {
     config = { client_id: client_id || '', client_secret: client_secret || '', mode: mode || 'sandbox' };
   } else if (type === 'stripe') {
-    config = { publishable_key: publishable_key || '', secret_key: secret_key || '', webhook_secret: webhook_secret || '' };
+    config = isLiveStripeConfiguredInEnvironment()
+      ? { publishable_key: '', secret_key: '', webhook_secret: '' }
+      : { publishable_key: publishable_key || '', secret_key: secret_key || '', webhook_secret: webhook_secret || '' };
   } else if (type === 'airwallex') {
     config = {
       client_id: airwallex_client_id || '',
@@ -471,7 +481,9 @@ router.post('/payment-accounts/:id/update', requireAuth, (req, res) => {
   if (type === 'paypal') {
     config = { client_id: client_id || '', client_secret: client_secret || '', mode: mode || 'sandbox' };
   } else if (type === 'stripe') {
-    config = { publishable_key: publishable_key || '', secret_key: secret_key || '', webhook_secret: webhook_secret || '' };
+    config = isLiveStripeConfiguredInEnvironment()
+      ? { publishable_key: '', secret_key: '', webhook_secret: '' }
+      : { publishable_key: publishable_key || '', secret_key: secret_key || '', webhook_secret: webhook_secret || '' };
   } else if (type === 'airwallex') {
     config = {
       client_id: airwallex_client_id || '',

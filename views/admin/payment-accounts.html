@@ -71,6 +71,9 @@
 
             <!-- Stripe Config -->
             <div id="add-stripe-config" class="config-section" style="display:none;">
+              <div style="background:#eef8ee; border:1px solid #8bc48b; border-radius:8px; padding:10px 12px; margin-bottom:12px; color:#245a28; font-size:13px;">
+                正式收款的 Stripe Live 密钥由服务器安全环境变量管理；在此仅管理账户名称、状态和默认选项。环境密钥不会保存在临时数据库中。
+              </div>
               <div style="background:#f0f4ff; border:1px solid #635BFF; border-radius:8px; padding:12px; margin-bottom:12px;">
                 <p style="margin:0; color:#333; font-size:13px;">
                   <strong>如何获取 Stripe 密钥？</strong><br>
@@ -619,6 +622,7 @@
             </div>
 
             <div id="edit-stripe" class="edit-config" style="${acc.type === 'stripe' ? '' : 'display:none;'}">
+              ${acc.credentials_managed_by_env ? '<div style="background:#eef8ee;border:1px solid #8bc48b;border-radius:8px;padding:10px 12px;margin-bottom:12px;color:#245a28;font-size:13px;">Stripe Live 密钥由服务器环境变量安全管理，不写入临时数据库。此账户会在服务启动时自动恢复为启用及默认账户。</div>' : ''}
               <div class="form-row">
                 <div class="form-group">
                   <label>Stripe 公钥</label>

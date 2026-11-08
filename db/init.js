@@ -277,7 +277,82 @@ function seedData() {
   save();
 }
 
-// Run seed
+function ensureLiveStripeDefaultAccount() {
+  const mode = process.env.STRIPE_MODE === 'test' || process.env.STRIPE_MODE === 'live'
+    ? process.env.STRIPE_MODE
+    : (process.env.NODE_ENV === 'production' ? 'live' : 'test');
+  const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || '';
+  const secretKey = process.env.STRIPE_SECRET_KEY || '';
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+  if (mode !== 'live' || !publishableKey.startsWith('pk_live_') ||
+      !secretKey.startsWith('sk_live_') || !webhookSecret.startsWith('whsec_')) {
+    return false;
+  }
+
+  const stripeAccounts = db.payment_accounts.filter(account => account.type === 'stripe');
+  let account = stripeAccounts.find(item => String(item.name || '').trim().toLowerCase() === 'stripe') ||
+    stripeAccounts.find(item => item.is_default) || stripeAccounts[0] || null;
+  let changed = false;
+
+  if (!account) {
+    const maxId = db.payment_accounts.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
+    const id = Math.max(Number(db.counters.payment_accounts) || 0, maxId) + 1;
+    db.counters.payment_accounts = id;
+    account = {
+      id,
+      name: 'Stripe',
+      type: 'stripe',
+      status: 'active',
+      config: JSON.stringify({ publishable_key: '', secret_key: '', webhook_secret: '' }),
+      is_default: 1,
+      sort_order: 0,
+      created_at: new Date().toISOString()
+    };
+    db.payment_accounts.push(account);
+    changed = true;
+  }
+
+  for (const paymentAccount of db.payment_accounts) {
+    const isSelectedStripe = paymentAccount.id === account.id;
+    const shouldBeDefault = isSelectedStripe ? 1 : 0;
+    if (Number(paymentAccount.is_default) !== shouldBeDefault) {
+      paymentAccount.is_default = shouldBeDefault;
+      paymentAccount.updated_at = new Date().toISOString();
+      changed = true;
+    }
+    if (paymentAccount.type === 'stripe' && !isSelectedStripe && paymentAccount.status !== 'inactive') {
+      paymentAccount.status = 'inactive';
+      paymentAccount.updated_at = new Date().toISOString();
+      changed = true;
+    }
+  }
+
+  if (account.status !== 'active') {
+    account.status = 'active';
+    changed = true;
+  }
+  if (Number(account.sort_order) !== 0) {
+    account.sort_order = 0;
+    changed = true;
+  }
+
+  // The Render environment is the source of truth for Live credentials; never persist them in store.json.
+  let config = {};
+  try { config = JSON.parse(account.config || '{}'); } catch { config = {}; }
+  if (config.publishable_key || config.secret_key || config.webhook_secret) {
+    config.publishable_key = '';
+    config.secret_key = '';
+    config.webhook_secret = '';
+    account.config = JSON.stringify(config);
+    changed = true;
+  }
+
+  if (changed) save();
+  return true;
+}
+
+// Run seed and reconstruct the environment-managed Live Stripe account after ephemeral restarts.
 seedData();
+ensureLiveStripeDefaultAccount();
 
 module.exports = dbWrapper;
