@@ -26,6 +26,13 @@
 
   <div class="container cart-page">
     <h1>Shopping Cart</h1>
+    <div class="cart-payment-prompt" id="cart-payment-prompt" style="display:none;">
+      <div>
+        <strong>Stripe card payment is available</strong>
+        <span>Enter your delivery details and pay securely on this page.</span>
+      </div>
+      <a href="#cart-direct-checkout" class="btn btn-primary">Pay by card</a>
+    </div>
     <div id="cart-container"></div>
   </div>
 
@@ -86,7 +93,7 @@
           </div>
         </div>
 
-        <section class="cart-direct-checkout" aria-labelledby="cart-payment-title">
+        <section class="cart-direct-checkout" id="cart-direct-checkout" aria-labelledby="cart-payment-title">
           <h2 id="cart-payment-title">Complete payment in your cart</h2>
           <p class="cart-payment-intro">Enter your contact and delivery details, then pay securely by card without leaving this page.</p>
           <div class="checkout-grid">
@@ -140,6 +147,7 @@
         </section>
         <div style="margin-top:20px;text-align:center;"><a href="/products" style="font-size:14px;">Continue Shopping</a></div>
       `;
+      if (stripeAccount) document.getElementById('cart-payment-prompt').style.display = 'flex';
       setupCartStripePayment();
     }
 

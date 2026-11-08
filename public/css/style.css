@@ -759,6 +759,28 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 /* ===== Cart direct payment ===== */
+.cart-payment-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 18px 0 24px;
+  padding: 16px 20px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: rgba(44,95,45,0.06);
+}
+
+.cart-payment-prompt > div {
+  display: grid;
+  gap: 4px;
+}
+
+.cart-payment-prompt span {
+  color: var(--gray);
+  font-size: 14px;
+}
+
 .cart-direct-checkout {
   margin: 36px 0 20px;
   padding: 28px;
@@ -792,6 +814,8 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 @media (max-width: 768px) {
+  .cart-payment-prompt { align-items: stretch; flex-direction: column; }
+  .cart-payment-prompt .btn { text-align: center; }
   .cart-direct-checkout { padding: 18px; }
   .cart-direct-checkout .checkout-summary { position: static; }
 }
