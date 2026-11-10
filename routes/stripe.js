@@ -5,8 +5,9 @@ const stripe = require('stripe');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const cart = require('../lib/cart');
+const auth = require('../lib/auth');
 
-const MAX_QUANTITY_PER_ITEM = 99;
 const CURRENCY = 'usd';
 
 function getStripeMode() {
@@ -73,44 +74,12 @@ function moneyToCents(value) {
   return Math.round((amount + Number.EPSILON) * 100);
 }
 
-function getCartPricing(cart, settings) {
-  if (!Array.isArray(cart) || cart.length === 0) throw new Error('Your cart is empty.');
-  const items = [];
-  let subtotalCents = 0;
-
-  for (const cartItem of cart) {
-    const productId = Number(cartItem.productId);
-    const quantity = Number(cartItem.quantity);
-    if (!Number.isInteger(productId) || !Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY_PER_ITEM) {
-      throw new Error('Your cart contains an invalid item or quantity.');
-    }
-    const product = db.findOne('products', { id: productId });
-    if (!product || product.status !== 'active') throw new Error('An item in your cart is no longer available.');
-    if (Number.isFinite(Number(product.stock)) && Number(product.stock) >= 0 && quantity > Number(product.stock)) {
-      throw new Error(`Not enough stock for ${product.name}.`);
-    }
-
-    const numericPrice = Number(product.price);
-    const unitAmount = moneyToCents(numericPrice);
-    if (Math.abs(numericPrice - unitAmount / 100) > 1e-8) {
-      throw new Error(`The price for ${product.name} must be set to a whole cent amount.`);
-    }
-    const lineTotal = unitAmount * quantity;
-    if (!Number.isSafeInteger(lineTotal)) throw new Error('The cart total is invalid.');
-    subtotalCents += lineTotal;
-    items.push({ product, quantity, unitAmount, lineTotal });
-  }
-
-  const freeShipCents = moneyToCents(parseFloat(settings.free_shipping_threshold || 50));
-  const flatRateCents = moneyToCents(parseFloat(settings.flat_shipping_rate || 5.99));
-  const shippingCents = subtotalCents >= freeShipCents ? 0 : flatRateCents;
-  const taxRate = Number.parseFloat(settings.tax_rate || 0);
-  if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) throw new Error('The store tax configuration is invalid.');
-  const taxCents = Math.round(subtotalCents * taxRate / 100);
-  const totalCents = subtotalCents + shippingCents + taxCents;
-
-  if (!Number.isSafeInteger(totalCents) || totalCents <= 0) throw new Error('The payment amount is invalid.');
-  return { items, subtotalCents, shippingCents, taxCents, totalCents };
+// Price the signed-in customer's persisted cart. Nothing here is read from the
+// request body, so a client cannot substitute products or amounts.
+function getCustomerCartPricing(customerId, settings) {
+  const { items } = cart.buildDetail(customerId);
+  if (items.length === 0) throw new Error('Your cart is empty.');
+  return cart.price(items, settings);
 }
 
 function validateCheckoutDetails(body) {
@@ -131,12 +100,13 @@ function formatAddress(details) {
   return `${details.address}, ${details.city}, ${details.state} ${details.zip}, ${details.country}`;
 }
 
-function createOrder(details, pricing, stripeAccount) {
+function createOrder(details, pricing, stripeAccount, customer) {
   const orderNumber = `ORD-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
   const customerName = `${details.firstName} ${details.lastName}`.trim();
   const shippingAddress = formatAddress(details);
   const orderResult = db.insert('orders', {
     order_number: orderNumber,
+    customer_id: customer.id,
     customer_email: details.email,
     customer_phone: details.phone,
     customer_name: customerName,
@@ -160,16 +130,16 @@ function createOrder(details, pricing, stripeAccount) {
 
   const orderId = orderResult.lastInsertRowid;
   try {
-    for (const item of pricing.items) {
-      const images = safeParseArray(item.product.images || item.product.image_list);
+    for (const line of pricing.lines) {
+      const images = safeParseArray(line.product.images || line.product.image_list);
       db.insert('order_items', {
         order_id: orderId,
-        product_id: item.product.id,
-        product_name: item.product.name,
-        product_image: item.product.primary_image || images[0] || '',
-        price: item.unitAmount / 100,
-        quantity: item.quantity,
-        total: item.lineTotal / 100
+        product_id: line.product.id,
+        product_name: line.product.name,
+        product_image: line.product.primary_image || images[0] || '',
+        price: line.unitCents / 100,
+        quantity: line.quantity,
+        total: line.lineTotalCents / 100
       });
     }
     db.insert('shipments', {
@@ -224,21 +194,25 @@ function getBaseUrl(req) {
   return `${req.protocol}://${req.get('host')}`;
 }
 
-// Create a server-priced order and PaymentIntent. The secret key never leaves the server.
-router.post('/stripe/create-payment-intent', async (req, res) => {
+// Create a server-priced order and PaymentIntent for the signed-in customer.
+// The cart is loaded from the customer's own rows; the secret key never leaves the server.
+router.post('/stripe/create-payment-intent', auth.requireCustomerApi, async (req, res) => {
   let orderId = null;
   let stripeRequestStarted = false;
   try {
-    const cart = req.session.cart || [];
+    const customer = auth.getCustomer(req);
+    const details = validateCheckoutDetails(req.body);
+    const settings = getSettings();
+    // Price the customer's persisted cart before touching Stripe, so an empty
+    // or tampered request can never reach the payment provider.
+    const pricing = getCustomerCartPricing(customer.id, settings);
+
     const stripeAccount = getStripeAccount(req.body.paymentAccountId);
     if (!stripeAccount) {
       return res.status(400).json({ success: false, error: 'Stripe is not configured for the selected payment method.' });
     }
 
-    const details = validateCheckoutDetails(req.body);
-    const settings = getSettings();
-    const pricing = getCartPricing(cart, settings);
-    const created = createOrder(details, pricing, stripeAccount);
+    const created = createOrder(details, pricing, stripeAccount, customer);
     orderId = created.orderId;
 
     const stripeClient = stripe(stripeAccount.config_data.secret_key);
@@ -249,7 +223,11 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
       automatic_payment_methods: { enabled: true },
       receipt_email: details.email,
       description: `${settings.store_name || 'Store'} order ${created.orderNumber}`,
-      metadata: { order_id: String(created.orderId), order_number: created.orderNumber }
+      metadata: {
+        order_id: String(created.orderId),
+        order_number: created.orderNumber,
+        customer_id: String(customer.id)
+      }
     }, { idempotencyKey: `order-${created.orderNumber}` });
 
     db.update('orders', created.orderId, { transaction_id: intent.id, payment_status: 'pending' });
@@ -274,10 +252,13 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
 });
 
 // Server-side verification after Stripe.js confirms the payment. Webhooks remain authoritative.
-router.post('/stripe/confirm-payment', async (req, res) => {
+// Ownership is re-checked here: the order must belong to the session customer.
+router.post('/stripe/confirm-payment', auth.requireCustomerApi, async (req, res) => {
   try {
+    const customer = auth.getCustomer(req);
     const order = db.findOne('orders', { id: Number(req.body.orderId) });
-    if (!order || order.payment_method !== 'stripe') {
+    if (!order || order.payment_method !== 'stripe' ||
+        String(order.customer_id) !== String(customer.id)) {
       return res.status(404).json({ success: false, error: 'Order not found.' });
     }
     const stripeAccount = getStripeAccount(order.payment_account_id, true) || getStripeAccount(order.payment_account_id, false);
@@ -290,7 +271,7 @@ router.post('/stripe/confirm-payment', async (req, res) => {
       return res.status(409).json({ success: false, error: 'Payment could not be verified.' });
     }
     markOrderPaid(order, intent);
-    req.session.cart = [];
+    cart.clear(customer.id);
     return res.json({ success: true, orderNumber: order.order_number, paymentStatus: 'paid' });
   } catch (error) {
     console.error('Stripe payment confirmation failed:', error.message);
@@ -299,10 +280,20 @@ router.post('/stripe/confirm-payment', async (req, res) => {
 });
 
 // Payment return page: independently verifies the PaymentIntent before showing paid status.
-router.get('/success', async (req, res) => {
+// Only the customer who owns the order may view it.
+router.get('/success', auth.requireCustomerPage, async (req, res) => {
+  const customer = auth.getCustomer(req);
   const orderNumber = String(req.query.order || '');
   const intentId = String(req.query.payment_intent || req.query.payment_intent_id || '');
-  const order = orderNumber ? db.findOne('orders', { order_number: orderNumber }) : null;
+
+  const found = orderNumber ? db.findOne('orders', { order_number: orderNumber }) : null;
+  const order = found && String(found.customer_id) === String(customer.id) ? found : null;
+  if (orderNumber && !order) {
+    return res.status(404).send(
+      '<h1>Order not found</h1><p>This order does not belong to your account.</p><p><a href="/account">Back to my account</a></p>'
+    );
+  }
+
   let isPaid = Boolean(order && order.payment_status === 'paid');
 
   if (order && intentId && order.payment_method === 'stripe') {
@@ -318,7 +309,7 @@ router.get('/success', async (req, res) => {
   }
 
   const orderItems = order ? db.findAll('order_items', { where: { order_id: order.id } }) : [];
-  if (isPaid) req.session.cart = [];
+  if (isPaid) cart.clear(customer.id);
   return renderSuccessPage(res, order, orderItems, isPaid);
 });
 
@@ -377,8 +368,21 @@ router.post('/webhook', async (req, res) => {
       const orderId = Number(intent.metadata && intent.metadata.order_id);
       const orderNumber = String(intent.metadata && intent.metadata.order_number || '');
       const order = orderId ? db.findOne('orders', { id: orderId }) : null;
-      if (order && order.payment_method === 'stripe' && String(order.order_number) === orderNumber &&
-          String(order.payment_account_id) === String(stripeAccount.id) && String(order.transaction_id) === String(intent.id)) {
+      if (order) {
+        // Every binding must hold: same provider, same order number, same payment
+        // account, same PaymentIntent, and same owning customer. A mismatch means
+        // the event cannot be trusted for this order, so it is rejected outright
+        // instead of being silently ignored.
+        const bindingOk = order.payment_method === 'stripe' &&
+          String(order.order_number) === orderNumber &&
+          String(order.payment_account_id) === String(stripeAccount.id) &&
+          String(order.transaction_id) === String(intent.id) &&
+          String(order.customer_id) === String(intent.metadata && intent.metadata.customer_id);
+        if (!bindingOk) {
+          console.error('Stripe webhook rejected: order binding mismatch for event', event.id);
+          return res.status(400).send('Payment does not match the order.');
+        }
+
         if (event.type === 'payment_intent.succeeded') {
           if (!markOrderPaid(order, intent)) {
             console.error('Stripe webhook amount/order verification failed for event:', event.id);

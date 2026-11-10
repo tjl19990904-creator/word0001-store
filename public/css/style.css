@@ -116,6 +116,18 @@ img { max-width: 100%; height: auto; display: block; }
   cursor: pointer;
 }
 
+.account-link {
+  color: #333;
+  font-size: 15px;
+  cursor: pointer;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-link:hover { color: var(--primary); }
+
 .cart-count {
   background: var(--primary);
   color: #fff;

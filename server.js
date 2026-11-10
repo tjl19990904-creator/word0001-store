@@ -28,13 +28,19 @@ app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.set('trust proxy', 1);
 
 app.use(session({
+  name: 'word0001.sid',
   secret: process.env.SESSION_SECRET || 'word0001-store-secret-key-2026',
   resave: false,
-  saveUninitialized: true,
+  // Do not hand out a session cookie to anonymous page views; a session is only
+  // created when there is something to store (guest cart, sign-in, etc.).
+  saveUninitialized: false,
   cookie: {
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: false,
+    // 'auto' marks the cookie Secure whenever the request arrived over HTTPS
+    // (Render terminates TLS and forwards x-forwarded-proto), without locking
+    // out plain-HTTP health checks or local development.
+    secure: 'auto',
     sameSite: 'lax'
   }
 }));
@@ -125,6 +131,7 @@ app.locals.requireAuth = requireAuth;
 
 // ===== Routes =====
 const storeRoutes = require('./routes/store');
+const accountRoutes = require('./routes/account');
 const adminRoutes = require('./routes/admin');
 const apiRoutes = require('./routes/api');
 const airwallexRoutes = require('./routes/airwallex');
@@ -133,6 +140,7 @@ const cashappRoutes = require('./routes/cashapp');
 app.use('/payment', stripeRoutes);
 app.use('/payment', airwallexRoutes);
 app.use('/payment', cashappRoutes);
+app.use('/account', accountRoutes);
 app.use('/', storeRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api', apiRoutes);

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/init');
 const https = require('https');
+const cartService = require('../lib/cart');
+const auth = require('../lib/auth');
 
 // Airwallex API endpoints
 const AIRWALLEX_API_BASE = process.env.NODE_ENV === 'production'
@@ -85,9 +87,11 @@ async function getAccessToken() {
 }
 
 // ===== Create Airwallex Payment Intent =====
-router.post('/create-payment-intent', async (req, res) => {
-  const cart = req.session.cart || [];
-  if (cart.length === 0) {
+// Customer-only: line items come from the signed-in customer's own cart.
+router.post('/create-payment-intent', auth.requireCustomerApi, async (req, res) => {
+  const customer = auth.getCustomer(req);
+  const { items: cartItems } = cartService.buildDetail(customer.id);
+  if (cartItems.length === 0) {
     return res.status(400).json({ success: false, error: 'Cart is empty' });
   }
 
@@ -103,10 +107,10 @@ router.post('/create-payment-intent', async (req, res) => {
 
     // Build cart items and calculate total
     let subtotal = 0;
-    const items = cart.map(item => {
-      const product = db.findOne('products', { id: item.productId });
+    const items = cartItems.map(item => {
+      const product = item.product;
       if (product) {
-        const lineTotal = product.price * item.quantity;
+        const lineTotal = Number(product.price) * item.quantity;
         subtotal += lineTotal;
         return {
           name: product.name,
@@ -148,7 +152,8 @@ router.post('/create-payment-intent', async (req, res) => {
 
     const orderResult = db.insert('orders', {
       order_number: orderNumber,
-      customer_email: email || '',
+      customer_id: customer.id,
+      customer_email: customer.email || email || '',
       customer_phone: phone || '',
       customer_name: customerName,
       shipping_address: shippingAddress,
@@ -171,20 +176,19 @@ router.post('/create-payment-intent', async (req, res) => {
 
     const orderId = orderResult.lastInsertRowid;
 
-    // Insert order items
-    cart.forEach(item => {
-      const product = db.findOne('products', { id: item.productId });
-      if (product) {
-        db.insert('order_items', {
-          order_id: orderId,
-          product_id: product.id,
-          product_name: product.name,
-          product_image: product.primary_image || '',
-          price: product.price,
-          quantity: item.quantity,
-          total: product.price * item.quantity
-        });
-      }
+    // Insert order items from the customer's own cart
+    cartItems.forEach(item => {
+      const product = item.product;
+      const imageList = product.images ? JSON.parse(product.images || '[]') : [];
+      db.insert('order_items', {
+        order_id: orderId,
+        product_id: product.id,
+        product_name: product.name,
+        product_image: (Array.isArray(imageList) && imageList[0]) || '',
+        price: Number(product.price),
+        quantity: item.quantity,
+        total: Number(product.price) * item.quantity
+      });
     });
 
     // Create shipment record
@@ -281,8 +285,9 @@ router.post('/create-payment-intent', async (req, res) => {
   }
 });
 
-// ===== Airwallex Success Page =====
-router.get('/airwallex-success', (req, res) => {
+// ===== Airwallex Success Page (own orders only) =====
+router.get('/airwallex-success', auth.requireCustomerPage, (req, res) => {
+  const customer = auth.getCustomer(req);
   const orderNumber = req.query.order;
 
   let order = null;
@@ -290,7 +295,8 @@ router.get('/airwallex-success', (req, res) => {
   let isPaid = false;
 
   if (orderNumber) {
-    order = db.findOne('orders', { order_number: orderNumber });
+    const found = db.findOne('orders', { order_number: orderNumber });
+    order = found && String(found.customer_id) === String(customer.id) ? found : null;
     if (order) {
       orderItems = db.findAll('order_items', { where: { order_id: order.id } });
 
@@ -321,11 +327,11 @@ router.get('/airwallex-success', (req, res) => {
             }
           }
 
-          req.session.cart = [];
+          cartService.clear(customer.id);
           renderAirwallexSuccessPage(res, order, orderItems, isPaid);
         }).catch(err => {
           console.error('Airwallex verify error:', err);
-          req.session.cart = [];
+          cartService.clear(customer.id);
           renderAirwallexSuccessPage(res, order, orderItems, false);
         });
         return;
@@ -333,7 +339,7 @@ router.get('/airwallex-success', (req, res) => {
     }
   }
 
-  req.session.cart = [];
+  cartService.clear(customer.id);
   renderAirwallexSuccessPage(res, order, orderItems, false);
 });
 

@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/init');
+const cart = require('../lib/cart');
+const auth = require('../lib/auth');
 
 // Helper: get settings
 function getSettings() {
@@ -18,6 +20,35 @@ function isStripeConfigured(config) {
     ? secretKey.startsWith('sk_live_') && publishableKey.startsWith('pk_live_')
     : secretKey.startsWith('sk_test_') && publishableKey.startsWith('pk_test_');
   return Boolean(correctPrefixes && (mode !== 'live' || webhookSecret));
+}
+
+// Build the cart view model strictly from the signed-in customer's own rows.
+// Product ids, prices and quantities never come from the browser.
+function buildCartView(customerId) {
+  const { items } = cart.buildDetail(customerId);
+  if (items.length === 0) {
+    return { cartItems: [], subtotal: 0, shippingCost: 0, tax: 0, total: 0 };
+  }
+  const priced = cart.price(items, getSettings());
+  const cartItems = priced.lines.map(line => {
+    const imageList = line.product.images ? safeParseArr(line.product.images) : [];
+    // Never send internal cost or SEO-only fields to the browser.
+    const { cost, meta_title, meta_description, ...publicProduct } = line.product;
+    return {
+      ...publicProduct,
+      image_list: imageList,
+      primary_image: imageList.length > 0 ? imageList[0] : '',
+      quantity: line.quantity,
+      lineTotal: line.lineTotalCents / 100
+    };
+  });
+  return {
+    cartItems,
+    subtotal: priced.subtotalCents / 100,
+    shippingCost: priced.shippingCents / 100,
+    tax: priced.taxCents / 100,
+    total: priced.totalCents / 100
+  };
 }
 
 // Helper: render template
@@ -154,30 +185,13 @@ router.get('/products/:slug', (req, res) => {
   renderPage(res, 'product-detail.html', { product, related, pageTitle: product.name });
 });
 
-// ===== Cart =====
-router.get('/cart', (req, res) => {
-  const cart = req.session.cart || [];
-  let subtotal = 0;
-  
-  const cartItems = cart.map(item => {
-    const product = db.findOne('products', { id: item.productId });
-    if (product) {
-      product.image_list = product.images ? safeParseArr(product.images) : [];
-      product.primary_image = product.image_list.length > 0 ? product.image_list[0] : '';
-      const lineTotal = product.price * item.quantity;
-      subtotal += lineTotal;
-      return { ...product, quantity: item.quantity, lineTotal };
-    }
-    return null;
-  }).filter(item => item !== null);
-
-  const settings = getSettings();
-  const freeShipThreshold = parseFloat(settings.free_shipping_threshold || 50);
-  const flatRate = parseFloat(settings.flat_shipping_rate || 5.99);
-  const shippingCost = subtotal >= freeShipThreshold || subtotal === 0 ? 0 : flatRate;
-  const taxRate = parseFloat(settings.tax_rate || 0);
-  const tax = Math.round(subtotal * taxRate) / 100;
-  const total = subtotal + shippingCost + tax;
+// ===== Cart (customer-only, database backed) =====
+// The cart is read from `cart_items` for the signed-in customer. A visitor
+// without a customer session is sent to sign in; they never see a cart that
+// belongs to somebody else, on any IP address.
+router.get('/cart', auth.requireCustomerPage, (req, res) => {
+  const customer = auth.getCustomer(req);
+  const view = buildCartView(customer.id);
 
   // Expose only public account labels and Stripe availability; never send payment credentials to the browser.
   const paymentAccounts = db.findAll('payment_accounts', { where: { status: 'active' } })
@@ -193,89 +207,67 @@ router.get('/cart', (req, res) => {
     });
 
   renderPage(res, 'cart.html', {
-    cartItems, subtotal, shippingCost, tax, total, paymentAccounts, pageTitle: 'Shopping Cart'
+    ...view,
+    paymentAccounts,
+    customer: auth.publicCustomer(customer),
+    pageTitle: 'Shopping Cart'
   });
 });
 
-// Add to cart
+// Add to cart. Guests get a session-scoped cart which is merged into their own
+// database cart at sign-in; signed-in customers write straight to their rows.
 router.post('/cart/add', (req, res) => {
   const productId = parseInt(req.body.productId);
   const quantity = parseInt(req.body.quantity) || 1;
-  
-  const product = db.findOne('products', { id: productId });
-  if (!product || product.status !== 'active') {
-    return res.status(404).json({ error: 'Product not found' });
-  }
+  const customer = auth.getCustomer(req);
 
-  if (!req.session.cart) req.session.cart = [];
-  
-  const existing = req.session.cart.find(item => item.productId === productId);
-  if (existing) {
-    existing.quantity += quantity;
+  let result;
+  let cartCount;
+  if (customer) {
+    result = cart.add(customer.id, productId, quantity);
+    cartCount = cart.count(customer.id);
   } else {
-    req.session.cart.push({ productId, quantity });
+    result = cart.addGuest(req.session, productId, quantity);
+    cartCount = cart.guestCount(req.session);
   }
 
-  const cartCount = req.session.cart.reduce((sum, item) => sum + item.quantity, 0);
-  
+  if (!result.ok) {
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('json'))) {
+      return res.status(result.status || 400).json({ error: result.error || 'Unable to add this item.' });
+    }
+    return res.status(result.status || 400).send(result.error || 'Unable to add this item.');
+  }
+
   if (req.xhr || (req.headers.accept && req.headers.accept.includes('json'))) {
-    res.json({ success: true, cartCount });
-  } else {
-    res.redirect('/cart');
+    return res.json({ success: true, cartCount });
   }
+  return res.redirect('/cart');
 });
 
-// Update cart
-router.post('/cart/update', (req, res) => {
+// Update cart — scoped to the current customer's rows only.
+router.post('/cart/update', auth.requireCustomerPage, (req, res) => {
+  const customer = auth.getCustomer(req);
   const productId = parseInt(req.body.productId);
   const quantity = parseInt(req.body.quantity);
-  
-  if (!req.session.cart) req.session.cart = [];
-  
-  if (quantity <= 0) {
-    req.session.cart = req.session.cart.filter(item => item.productId !== productId);
-  } else {
-    const item = req.session.cart.find(item => item.productId === productId);
-    if (item) item.quantity = quantity;
-  }
-
+  cart.setQuantity(customer.id, productId, quantity);
   res.redirect('/cart');
 });
 
-// Remove from cart
-router.post('/cart/remove', (req, res) => {
+// Remove from cart — scoped to the current customer's rows only.
+router.post('/cart/remove', auth.requireCustomerPage, (req, res) => {
+  const customer = auth.getCustomer(req);
   const productId = parseInt(req.body.productId);
-  if (req.session.cart) {
-    req.session.cart = req.session.cart.filter(item => item.productId !== productId);
-  }
+  cart.remove(customer.id, productId);
   res.redirect('/cart');
 });
 
-// ===== Checkout =====
-router.get('/checkout', (req, res) => {
-  const cart = req.session.cart || [];
-  if (cart.length === 0) {
+// ===== Checkout (customer-only) =====
+router.get('/checkout', auth.requireCustomerPage, (req, res) => {
+  const customer = auth.getCustomer(req);
+  const view = buildCartView(customer.id);
+  if (view.cartItems.length === 0) {
     return res.redirect('/cart');
   }
-
-  let subtotal = 0;
-  const cartItems = cart.map(item => {
-    const product = db.findOne('products', { id: item.productId });
-    if (product) {
-      const lineTotal = product.price * item.quantity;
-      subtotal += lineTotal;
-      return { ...product, quantity: item.quantity, lineTotal };
-    }
-    return null;
-  }).filter(item => item !== null);
-
-  const settings = getSettings();
-  const freeShipThreshold = parseFloat(settings.free_shipping_threshold || 50);
-  const flatRate = parseFloat(settings.flat_shipping_rate || 5.99);
-  const shippingCost = subtotal >= freeShipThreshold ? 0 : flatRate;
-  const taxRate = parseFloat(settings.tax_rate || 0);
-  const tax = Math.round(subtotal * taxRate) / 100;
-  const total = subtotal + shippingCost + tax;
 
   // Only expose public payment labels and a boolean configuration state to the browser.
   // Never serialize provider credentials or bank account configuration into the checkout page.
@@ -299,47 +291,42 @@ router.get('/checkout', (req, res) => {
     })
     .sort((a, b) => a.sort_order - b.sort_order);
 
-  renderPage(res, 'checkout.html', { 
-    cartItems, subtotal, shippingCost, tax, total, paymentAccounts, pageTitle: 'Checkout' 
+  renderPage(res, 'checkout.html', {
+    ...view,
+    paymentAccounts,
+    customer: auth.publicCustomer(customer),
+    pageTitle: 'Checkout'
   });
 });
 
-// Place order
-router.post('/checkout/place-order', (req, res) => {
-  const cart = req.session.cart || [];
-  if (cart.length === 0) {
+// Place an offline/unpaid order. The line items are rebuilt from the customer's
+// own database cart; any product or amount supplied by the browser is ignored.
+router.post('/checkout/place-order', auth.requireCustomerPage, (req, res) => {
+  const customer = auth.getCustomer(req);
+  const { items } = cart.buildDetail(customer.id);
+  if (items.length === 0) {
     return res.redirect('/cart');
   }
 
   const { email, phone, firstName, lastName, address, city, state, zip, country, paymentMethod, paymentAccountId, notes } = req.body;
-  
-  let subtotal = 0;
-  const cartItems = cart.map(item => {
-    const product = db.findOne('products', { id: item.productId });
-    if (product) {
-      const lineTotal = product.price * item.quantity;
-      subtotal += lineTotal;
-      return { ...product, quantity: item.quantity, lineTotal };
-    }
-    return null;
-  }).filter(item => item !== null);
-
   const settings = getSettings();
-  const freeShipThreshold = parseFloat(settings.free_shipping_threshold || 50);
-  const flatRate = parseFloat(settings.flat_shipping_rate || 5.99);
-  const shippingCost = subtotal >= freeShipThreshold ? 0 : flatRate;
-  const taxRate = parseFloat(settings.tax_rate || 0);
-  const tax = Math.round(subtotal * taxRate) / 100;
-  const total = subtotal + shippingCost + tax;
+  const pricing = cart.price(items, settings);
 
   const orderNumber = 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-  const customerName = `${firstName} ${lastName}`;
-  const shippingAddress = `${address}, ${city}, ${state} ${zip}, ${country}`;
+  const customerName = `${firstName || ''} ${lastName || ''}`.trim();
+  const shippingAddress = `${address || ''}, ${city || ''}, ${state || ''} ${zip || ''}, ${country || 'United States'}`;
 
-  // Insert order
+  // Validate that the selected payment account really exists and is active.
+  let accountId = null;
+  if (paymentAccountId) {
+    const account = db.findOne('payment_accounts', { id: Number(paymentAccountId) });
+    if (account && account.status === 'active') accountId = account.id;
+  }
+
   const orderResult = db.insert('orders', {
     order_number: orderNumber,
-    customer_email: email,
+    customer_id: customer.id,
+    customer_email: customer.email || email,
     customer_phone: phone,
     customer_name: customerName,
     shipping_address: shippingAddress,
@@ -348,34 +335,33 @@ router.post('/checkout/place-order', (req, res) => {
     shipping_zip: zip,
     shipping_country: country || 'United States',
     shipping_method: 'Standard Shipping',
-    shipping_cost: shippingCost,
-    subtotal: subtotal,
-    tax: tax,
-    total: total,
+    shipping_cost: pricing.shippingCents / 100,
+    subtotal: pricing.subtotalCents / 100,
+    tax: pricing.taxCents / 100,
+    total: pricing.totalCents / 100,
     status: 'pending',
     payment_status: 'unpaid',
     payment_method: paymentMethod || '',
-    payment_account_id: paymentAccountId ? parseInt(paymentAccountId) : null,
+    payment_account_id: accountId,
     notes: notes || '',
     transaction_id: ''
   });
 
   const orderId = orderResult.lastInsertRowid;
 
-  // Insert order items
-  cartItems.forEach(item => {
+  pricing.lines.forEach(line => {
+    const imageList = line.product.images ? safeParseArr(line.product.images) : [];
     db.insert('order_items', {
       order_id: orderId,
-      product_id: item.id,
-      product_name: item.name,
-      product_image: item.primary_image || '',
-      price: item.price,
-      quantity: item.quantity,
-      total: item.lineTotal
+      product_id: line.product.id,
+      product_name: line.product.name,
+      product_image: imageList[0] || '',
+      price: line.unitCents / 100,
+      quantity: line.quantity,
+      total: line.lineTotalCents / 100
     });
   });
 
-  // Create initial shipment record
   db.insert('shipments', {
     order_id: orderId,
     tracking_number: '',
@@ -386,20 +372,22 @@ router.post('/checkout/place-order', (req, res) => {
     shipped_at: null,
     delivered_at: null,
     shipping_address: shippingAddress,
-    shipping_cost: shippingCost,
+    shipping_cost: pricing.shippingCents / 100,
     notes: ''
   });
 
-  // Clear cart
-  req.session.cart = [];
+  // Only this customer's cart is cleared.
+  cart.clear(customer.id);
 
-  renderPage(res, 'order-confirmation.html', { 
-    orderNumber, orderId, total, email, pageTitle: 'Order Confirmed' 
+  renderPage(res, 'order-confirmation.html', {
+    orderNumber, orderId, total: (pricing.totalCents / 100).toFixed(2), email: customer.email || email,
+    pageTitle: 'Order Confirmed'
   });
 });
 
-// ===== Order tracking =====
-router.get('/track-order', (req, res) => {
+// ===== Order tracking (customer-only, own orders only) =====
+router.get('/track-order', auth.requireCustomerPage, (req, res) => {
+  const customer = auth.getCustomer(req);
   const orderNumber = req.query.order_number;
   let order = null;
   let orderItems = [];
@@ -407,8 +395,11 @@ router.get('/track-order', (req, res) => {
   let trackingHistory = [];
 
   if (orderNumber) {
-    order = db.findOne('orders', { order_number: orderNumber });
-    if (order) {
+    const found = db.findOne('orders', { order_number: orderNumber });
+    // Ownership check: another customer's order is treated as not found so the
+    // page cannot be used to enumerate or read someone else's order.
+    if (found && String(found.customer_id) === String(customer.id)) {
+      order = found;
       orderItems = db.findAll('order_items', { where: { order_id: order.id } });
       shipment = db.findOne('shipments', { order_id: order.id });
       if (shipment) {
@@ -418,9 +409,10 @@ router.get('/track-order', (req, res) => {
     }
   }
 
-  renderPage(res, 'track-order.html', { 
-    order, orderItems, shipment, trackingHistory, 
-    searchedOrderNumber: orderNumber || '', pageTitle: 'Track Order' 
+  renderPage(res, 'track-order.html', {
+    order, orderItems, shipment, trackingHistory,
+    customer: auth.publicCustomer(customer),
+    searchedOrderNumber: orderNumber || '', pageTitle: 'Track Order'
   });
 });
 

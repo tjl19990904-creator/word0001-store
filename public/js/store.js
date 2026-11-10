@@ -113,7 +113,32 @@ function switchTab(tabId, btnEl) {
   if (btnEl) btnEl.classList.add('active');
 }
 
+// Show "Sign in" or the customer's first name in the header.
+// The session probe only returns the signed-in customer's own public profile.
+async function updateAccountNav() {
+  const actions = document.querySelector('.header-actions');
+  if (!actions || document.getElementById('account-link')) return;
+
+  let session = { loggedIn: false, customer: null };
+  try {
+    const response = await fetch('/api/account/session', { headers: { Accept: 'application/json' } });
+    if (response.ok) session = await response.json();
+  } catch (_) {
+    // Network hiccup: keep the neutral "Sign in" link.
+  }
+
+  const link = document.createElement('a');
+  link.id = 'account-link';
+  link.className = 'account-link';
+  link.href = session.loggedIn ? '/account' : '/account/login';
+  link.textContent = session.loggedIn
+    ? ((session.customer && session.customer.firstName) || 'My account')
+    : 'Sign in';
+  actions.insertBefore(link, actions.firstChild);
+}
+
 // Init on page load
 document.addEventListener('DOMContentLoaded', () => {
   updateCartCount();
+  updateAccountNav();
 });

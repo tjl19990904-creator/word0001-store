@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/init');
 const https = require('https');
+const cartService = require('../lib/cart');
+const auth = require('../lib/auth');
 
 // Helper: get active Cash App account config
 function getCashAppAccount() {
@@ -61,10 +63,11 @@ function squareRequest(method, path, body, accessToken) {
 
 // ===== Create Cash App Payment (Server-side payment creation) =====
 // This endpoint creates a Square payment using the token generated client-side
-router.post('/create-payment', async (req, res) => {
+router.post('/create-payment', auth.requireCustomerApi, async (req, res) => {
   try {
-    const cart = req.session.cart || [];
-    if (cart.length === 0) {
+    const customer = auth.getCustomer(req);
+    const { items: cartItems } = cartService.buildDetail(customer.id);
+    if (cartItems.length === 0) {
       return res.status(400).json({ success: false, error: 'Cart is empty' });
     }
 
@@ -83,16 +86,14 @@ router.post('/create-payment', async (req, res) => {
     const settings = getSettings();
     const storeName = settings.store_name || 'Word0001 Store';
 
-    // Calculate total from cart
+    // Calculate total from the signed-in customer's own cart
     let subtotal = 0;
     const orderItems = [];
-    cart.forEach(item => {
-      const product = db.findOne('products', { id: item.productId });
-      if (product) {
-        const lineTotal = product.price * item.quantity;
-        subtotal += lineTotal;
-        orderItems.push({ product, quantity: item.quantity, lineTotal });
-      }
+    cartItems.forEach(item => {
+      const product = item.product;
+      const lineTotal = Number(product.price) * item.quantity;
+      subtotal += lineTotal;
+      orderItems.push({ product, quantity: item.quantity, lineTotal });
     });
 
     if (orderItems.length === 0) {
@@ -116,7 +117,8 @@ router.post('/create-payment', async (req, res) => {
 
     const orderResult = db.insert('orders', {
       order_number: orderNumber,
-      customer_email: email || '',
+      customer_id: customer.id,
+      customer_email: customer.email || email || '',
       customer_phone: phone || '',
       customer_name: customerName,
       shipping_address: shippingAddress,
@@ -293,8 +295,9 @@ router.post('/create-payment', async (req, res) => {
 });
 
 // ===== Confirm Cash App Payment (after client-side token is generated) =====
-router.post('/confirm-payment', async (req, res) => {
+router.post('/confirm-payment', auth.requireCustomerApi, async (req, res) => {
   try {
+    const customer = auth.getCustomer(req);
     const { orderId, paymentToken, squareOrderId } = req.body;
 
     if (!orderId || !paymentToken || !squareOrderId) {
@@ -302,7 +305,11 @@ router.post('/confirm-payment', async (req, res) => {
     }
 
     const order = db.findOne('orders', { id: parseInt(orderId) });
-    if (!order) {
+    // The order must belong to this customer and to the Square order that was
+    // created for it; otherwise a client could settle someone else's order.
+    if (!order || order.payment_method !== 'cashapp' ||
+        String(order.customer_id) !== String(customer.id) ||
+        String(order.transaction_id) !== String(squareOrderId)) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
@@ -377,8 +384,8 @@ router.post('/confirm-payment', async (req, res) => {
         transaction_id: payment.id
       });
 
-      // Clear cart
-      req.session.cart = [];
+      // Clear only this customer's cart
+      cartService.clear(customer.id);
 
       res.json({
         success: true,
@@ -410,8 +417,9 @@ router.post('/confirm-payment', async (req, res) => {
   }
 });
 
-// ===== Cash App Payment Success Page =====
-router.get('/cashapp-success', (req, res) => {
+// ===== Cash App Payment Success Page (own orders only) =====
+router.get('/cashapp-success', auth.requireCustomerPage, (req, res) => {
+  const customer = auth.getCustomer(req);
   const orderNumber = req.query.order;
   const squareOrderId = req.query.square_order_id;
 
@@ -419,14 +427,15 @@ router.get('/cashapp-success', (req, res) => {
   let orderItems = [];
 
   if (orderNumber) {
-    order = db.findOne('orders', { order_number: orderNumber });
+    const found = db.findOne('orders', { order_number: orderNumber });
+    order = found && String(found.customer_id) === String(customer.id) ? found : null;
     if (order) {
       orderItems = db.findAll('order_items', { where: { order_id: order.id } });
       // Order status should already be updated by confirm-payment endpoint
     }
   }
 
-  req.session.cart = [];
+  cartService.clear(customer.id);
 
   const fs = require('fs');
   const path = require('path');

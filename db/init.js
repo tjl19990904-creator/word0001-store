@@ -17,6 +17,7 @@ const defaultDb = {
   categories: [],
   products: [],
   customers: [],
+  cart_items: [],
   orders: [],
   order_items: [],
   payment_accounts: [],
@@ -26,7 +27,7 @@ const defaultDb = {
   shipment_tracking: [],
   settings: {},
   counters: {
-    users: 0, categories: 0, products: 0, customers: 0,
+    users: 0, categories: 0, products: 0, customers: 0, cart_items: 0,
     orders: 0, order_items: 0, payment_accounts: 0, payment_events: 0,
     withdrawal_accounts: 0, shipments: 0, shipment_tracking: 0
   }

@@ -5,6 +5,8 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 const db = require('../db/init');
+const cart = require('../lib/cart');
+const auth = require('../lib/auth');
 
 // File upload endpoint
 const storage = multer.diskStorage({
@@ -66,11 +68,18 @@ router.post('/upload-single', upload.single('file'), (req, res) => {
   });
 });
 
-// Get cart count
+// Get cart count — signed-in customers get their own database cart count,
+// anonymous visitors only ever get their own session cart count.
 router.get('/cart/count', (req, res) => {
-  const cart = req.session.cart || [];
-  const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const customer = auth.getCustomer(req);
+  const count = customer ? cart.count(customer.id) : cart.guestCount(req.session);
   res.json({ count });
+});
+
+// Session probe used by the storefront header. Returns no sensitive fields.
+router.get('/account/session', (req, res) => {
+  const customer = auth.getCustomer(req);
+  res.json({ loggedIn: Boolean(customer), customer: auth.publicCustomer(customer) });
 });
 
 module.exports = router;
