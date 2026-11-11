@@ -65,7 +65,9 @@
       "image_list": [
         "/uploads/products/xun-pottery-flute.webp"
       ],
-      "primary_image": "/uploads/products/xun-pottery-flute.webp"
+      "primary_image": "/uploads/products/xun-pottery-flute.webp",
+      "name_zh": "手工中国陶埙 · 十孔",
+      "short_description_zh": "探索十孔陶埙的独特韵味——以传统坭兴陶工艺手工制作的牛头埙，音色空灵悠远。"
     },
     {
       "id": 2,
@@ -92,7 +94,9 @@
       "image_list": [
         "/uploads/products/desert-rose-crystal.webp"
       ],
-      "primary_image": "/uploads/products/desert-rose-crystal.webp"
+      "primary_image": "/uploads/products/desert-rose-crystal.webp",
+      "name_zh": "0.25kg 沙漠玫瑰原石 · 疗愈水晶",
+      "short_description_zh": "释放原石的天然之美——0.25kg 沙漠玫瑰原石，自然形成的花瓣状晶簇，承载沙漠的宁静能量。"
     },
     {
       "id": 3,
@@ -119,7 +123,9 @@
       "image_list": [
         "/uploads/products/crystal-healing-cube.webp"
       ],
-      "primary_image": "/uploads/products/crystal-healing-cube.webp"
+      "primary_image": "/uploads/products/crystal-healing-cube.webp",
+      "name_zh": "0.5 英寸混合水晶疗愈立方 · 冥想能量",
+      "short_description_zh": "体验混合水晶疗愈立方的和谐能量——几何精准的天然水晶立方，为冥想带来大地的力量。"
     },
     {
       "id": 4,
@@ -146,7 +152,9 @@
       "image_list": [
         "/uploads/products/crystal-spiritual-pendant.webp"
       ],
-      "primary_image": "/uploads/products/crystal-spiritual-pendant.webp"
+      "primary_image": "/uploads/products/crystal-spiritual-pendant.webp",
+      "name_zh": "1.1 英寸混合水晶灵性吊坠 · 疗愈护佑",
+      "short_description_zh": "为日常生活注入转化能量——精美工艺的灵性项链，中央镶嵌璀璨宝石。"
     },
     {
       "id": 5,
@@ -173,7 +181,9 @@
       "image_list": [
         "/uploads/products/sandalwood-mala-bracelet.webp"
       ],
-      "primary_image": "/uploads/products/sandalwood-mala-bracelet.webp"
+      "primary_image": "/uploads/products/sandalwood-mala-bracelet.webp",
+      "name_zh": "8mm 迈索尔檀香木念珠手串 · 冥想",
+      "short_description_zh": "感受木念珠的至纯本质——8mm 正宗迈索尔檀香木念珠手串，承袭檀香的神圣特质。"
     }
   ],
   "customers": [
@@ -391,7 +401,11 @@
     "flat_shipping_rate": "5.99",
     "tax_rate": "0",
     "announcement_bar": "Free shipping on orders over $50!",
-    "announcement_enabled": "1"
+    "announcement_enabled": "1",
+    "announcement_bar_zh": "满 $50 免运费！",
+    "homepage_title_zh": "欢迎来到 Word0001 商店",
+    "store_description_zh": "精选天然疗愈水晶、冥想用品与灵性饰品，全球配送，安全支付。",
+    "store_footer_text_zh": "© 2026 Word0001 Store. 保留所有权利。"
   },
   "counters": {
     "users": 1,

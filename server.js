@@ -24,6 +24,11 @@ app.use(express.json({ limit: '50mb', verify: (req, res, buf) => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
+// Language resolution (/zh prefix, ?lang=, cookie, Accept-Language). Must run
+// before the routers so every route sees req.locale.
+const i18n = require('./lib/i18n');
+app.use(i18n.middleware);
+
 // Trust proxy for production (needed for Render.com / reverse proxies)
 app.set('trust proxy', 1);
 

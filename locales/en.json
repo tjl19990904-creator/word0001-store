@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "title": "Healing Crystals, Meditation Tools & Spiritual Jewelry",
+    "description": "Hand-picked healing crystals, meditation tools and spiritual jewelry. Worldwide shipping with secure card payment."
+  },
+  "nav": {
+    "home": "Home",
+    "products": "Products",
+    "trackOrder": "Track Order",
+    "about": "About",
+    "contact": "Contact",
+    "cart": "Cart",
+    "signIn": "Sign in",
+    "myAccount": "My account"
+  },
+  "home": {
+    "hero": {
+      "cta": "Shop Now"
+    },
+    "featured": {
+      "title": "Featured Products",
+      "subtitle": "Discover our handpicked selection of quality items",
+      "viewAll": "View All Products",
+      "empty": "No products available yet. Please check back soon!"
+    },
+    "product": {
+      "sale": "SALE",
+      "buyNow": "Buy Now - Proceed to Payment",
+      "addToCart": "Add to Cart"
+    },
+    "footer": {
+      "quickLinks": "Quick Links",
+      "customerService": "Customer Service",
+      "followUs": "Follow Us",
+      "aboutUs": "About Us",
+      "contactUs": "Contact Us",
+      "orderTracking": "Order Tracking",
+      "email": "Email"
+    }
+  },
+  "cart": {
+    "added": "Added to cart!",
+    "addError": "Unable to add this item to your cart. Please try again.",
+    "checkoutError": "Unable to open checkout. Please try again."
+  },
+  "lang": {
+    "label": "Language",
+    "en": "English",
+    "zh": "简体中文"
+  }
+}

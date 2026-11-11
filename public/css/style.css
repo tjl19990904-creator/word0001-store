@@ -106,6 +106,39 @@ img { max-width: 100%; height: auto; display: block; }
   gap: 20px;
 }
 
+/* ===== Language switcher ===== */
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--light-gray);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.lang-switch .lang-option {
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: var(--gray);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+
+.lang-switch .lang-option:hover { color: var(--primary); }
+
+.lang-switch .lang-option.active {
+  background: var(--dark);
+  color: #fff;
+  font-weight: 600;
+}
+
+.lang-switch .lang-sep { color: #ccc; }
+
 .cart-link {
   position: relative;
   display: flex;
@@ -1022,4 +1055,11 @@ img { max-width: 100%; height: auto; display: block; }
   .hero h1 { font-size: 24px; }
   .hero p { font-size: 15px; }
   .form-row { grid-template-columns: 1fr; }
+  /* Keep logo + account + cart + language switcher on one row on phones. */
+  .header-inner { padding: 12px 14px; gap: 8px; }
+  .logo { font-size: 18px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header-actions { gap: 10px; flex-shrink: 0; }
+  .cart-link { font-size: 14px; }
+  .lang-switch { padding: 4px 7px; font-size: 12px; gap: 2px; }
+  .lang-switch .lang-option { padding: 2px 5px; }
 }

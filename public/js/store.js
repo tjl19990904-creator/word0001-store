@@ -1,5 +1,13 @@
 // ===== Store Frontend JavaScript =====
 
+// UI copy for the current locale is rendered by the server into window.I18N.
+// Read it lazily: this file may load before the page-level script defines it.
+// Pages that do not provide it fall back to English.
+function tr(key, fallback) {
+  const dictionary = (typeof window !== 'undefined' && window.I18N) || {};
+  return dictionary[key] || fallback;
+}
+
 // Cart count update
 function updateCartCount() {
   fetch('/api/cart/count')
@@ -27,12 +35,12 @@ async function addToCart(productId, quantity = 1) {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.success) {
-      throw new Error(result.error || 'Unable to add this item to your cart.');
+      throw new Error(result.error || tr('addError', 'Unable to add this item to your cart. Please try again.'));
     }
     updateCartCount();
-    showToast('Added to cart!', 'success');
+    showToast(tr('added', 'Added to cart!'), 'success');
   } catch (error) {
-    showToast(error.message || 'Unable to add this item to your cart. Please try again.', 'error');
+    showToast(error.message || tr('addError', 'Unable to add this item to your cart. Please try again.'), 'error');
   }
 }
 
@@ -49,11 +57,11 @@ async function buyNow(productId, quantity = 1) {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.success) {
-      throw new Error(result.error || 'Unable to prepare checkout for this item.');
+      throw new Error(result.error || tr('checkoutError', 'Unable to prepare checkout for this item.'));
     }
     window.location.assign('/checkout');
   } catch (error) {
-    showToast(error.message || 'Unable to open checkout. Please try again.', 'error');
+    showToast(error.message || tr('checkoutError', 'Unable to open checkout. Please try again.'), 'error');
   }
 }
 
@@ -132,8 +140,8 @@ async function updateAccountNav() {
   link.className = 'account-link';
   link.href = session.loggedIn ? '/account' : '/account/login';
   link.textContent = session.loggedIn
-    ? ((session.customer && session.customer.firstName) || 'My account')
-    : 'Sign in';
+    ? ((session.customer && session.customer.firstName) || tr('myAccount', 'My account'))
+    : tr('signIn', 'Sign in');
   actions.insertBefore(link, actions.firstChild);
 }
 

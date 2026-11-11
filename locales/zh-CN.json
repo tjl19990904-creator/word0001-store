@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "title": "天然疗愈水晶 · 冥想用品 · 灵性饰品",
+    "description": "精选天然疗愈水晶、冥想用品与灵性饰品，全球配送，支持安全信用卡支付。"
+  },
+  "nav": {
+    "home": "首页",
+    "products": "全部商品",
+    "trackOrder": "订单查询",
+    "about": "关于我们",
+    "contact": "联系我们",
+    "cart": "购物车",
+    "signIn": "登录",
+    "myAccount": "我的账户"
+  },
+  "home": {
+    "hero": {
+      "cta": "立即选购"
+    },
+    "featured": {
+      "title": "精选商品",
+      "subtitle": "甄选好物，为身心带来宁静与平衡",
+      "viewAll": "查看全部商品",
+      "empty": "暂无在售商品，敬请期待。"
+    },
+    "product": {
+      "sale": "特惠",
+      "buyNow": "立即购买 · 前往支付",
+      "addToCart": "加入购物车"
+    },
+    "footer": {
+      "quickLinks": "快速链接",
+      "customerService": "客户服务",
+      "followUs": "关注我们",
+      "aboutUs": "关于我们",
+      "contactUs": "联系我们",
+      "orderTracking": "订单查询",
+      "email": "邮箱"
+    }
+  },
+  "cart": {
+    "added": "已加入购物车！",
+    "addError": "加入购物车失败，请稍后重试。",
+    "checkoutError": "无法打开结账页面，请稍后重试。"
+  },
+  "lang": {
+    "label": "语言",
+    "en": "English",
+    "zh": "简体中文"
+  }
+}
