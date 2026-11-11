@@ -4,6 +4,7 @@ const db = require('../db/init');
 const https = require('https');
 const cartService = require('../lib/cart');
 const auth = require('../lib/auth');
+const renderPage = require('../lib/render');
 
 // Helper: get active Cash App account config
 function getCashAppAccount() {
@@ -437,41 +438,11 @@ router.get('/cashapp-success', auth.requireCustomerPage, (req, res) => {
 
   cartService.clear(customer.id);
 
-  const fs = require('fs');
-  const path = require('path');
-  const settings = getSettings();
-  const templatePath = path.join(__dirname, '..', 'views', 'payment-success.html');
-
-  if (fs.existsSync(templatePath)) {
-    let html = fs.readFileSync(templatePath, 'utf8');
-    html = html.replace(/\{\{settings\.(\w+)\}\}/g, (match, key) => {
-      return settings[key] !== undefined ? String(settings[key]) : '';
-    });
-    html = html.replace(/\{\{data:json:(\w+)\}\}/g, (match, key) => {
-      const data = { order, orderItems, isPaid: order && order.payment_status === 'paid' };
-      const val = data[key];
-      return val !== undefined ? JSON.stringify(val) : '[]';
-    });
-    html = html.replace(/\{\{data\.(\w+(?:\.\w+)*)\}\}/g, (match, key) => {
-      const parts = key.split('.');
-      let val = { order, orderItems, isPaid: order && order.payment_status === 'paid' };
-      for (const part of parts) { val = val ? val[part] : undefined; }
-      return val !== undefined && val !== null ? String(val) : '';
-    });
-    html = html.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-      const data = { order, orderItems, isPaid: order && order.payment_status === 'paid', settings };
-      return data[key] !== undefined ? String(data[key]) : '';
-    });
-    res.send(html);
-  } else {
-    const isPaid = order && order.payment_status === 'paid';
-    res.send(`
-      <h1>Payment ${isPaid ? 'Successful' : 'Processing'}</h1>
-      <p>Order: ${order ? order.order_number : 'N/A'}</p>
-      <p>Thank you for your purchase!</p>
-      <a href="/">Continue Shopping</a>
-    `);
-  }
+  return renderPage(res, 'payment-success.html', {
+    order,
+    orderItems,
+    isPaid: Boolean(order && order.payment_status === 'paid')
+  });
 });
 
 // ===== Square Webhook (for payment confirmation) =====

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,44 +11,46 @@
   <div class="announcement-bar">{{settings.announcement_bar}}</div>
   <header class="header">
     <div class="header-inner">
-      <a href="/" class="logo">{{settings.store_name}}</a>
+      <a href="{{homeUrl}}" class="logo">{{settings.store_name}}</a>
       <nav><ul class="nav-menu">
-        <li><a href="/">Home</a></li>
-        <li><a href="/products">Products</a></li>
-        <li><a href="/track-order">Track Order</a></li>
-        <li><a href="/contact">Contact</a></li>
+        <li><a href="/">{{t:nav.home}}</a></li>
+        <li><a href="/products">{{t:nav.products}}</a></li>
+        <li><a href="/track-order">{{t:nav.trackOrder}}</a></li>
+        <li><a href="/contact">{{t:nav.contact}}</a></li>
       </ul></nav>
       <div class="header-actions">
-        <a href="/account" class="account-link">My account</a>
+        <a href="{{localePrefix}}/account" class="account-link">{{t:nav.myAccount}}</a>
+        {{> lang-switcher}}
       </div>
     </div>
   </header>
 
   <div class="container" style="padding:40px 20px 64px; max-width:760px;">
-    <h1 style="font-size:1.7em; margin-bottom:6px;">Complete your payment</h1>
-    <p style="color:#667; margin-bottom:24px;">Order <strong id="order-number"></strong></p>
+    <h1 style="font-size:1.7em; margin-bottom:6px;">{{t:pay.title}}</h1>
+    <p style="color:#667; margin-bottom:24px;">{{t:pay.orderLabel}} <strong id="order-number"></strong></p>
 
     <div id="notice" style="display:none; padding:14px 16px; border-radius:8px; margin-bottom:20px; font-size:14px;"></div>
 
     <div style="background:#fff; border:1px solid #e6e6e6; border-radius:10px; padding:20px 22px; margin-bottom:20px;">
       <div id="items"></div>
       <div style="display:flex; justify-content:space-between; border-top:1px solid #eee; padding-top:12px; margin-top:8px; font-size:18px; font-weight:700;">
-        <span>Total</span><span id="total"></span>
+        <span>{{t:pay.total}}</span><span id="total"></span>
       </div>
       <p style="font-size:13px; color:#778; margin-top:10px;" id="ship-to"></p>
     </div>
 
     <div id="pay-area" style="background:#fff; border:1px solid #e6e6e6; border-radius:10px; padding:20px 22px;">
-      <h3 style="margin-bottom:14px; font-size:1.05em;">Card payment</h3>
+      <h3 style="margin-bottom:14px; font-size:1.05em;">{{t:pay.cardPayment}}</h3>
       <div id="payment-element"></div>
       <div id="pay-error" style="display:none; color:#b42318; background:#fef3f2; border:1px solid #fecdca; padding:10px 12px; border-radius:6px; margin-top:14px; font-size:14px;"></div>
-      <button id="pay-btn" class="btn btn-primary btn-block btn-lg" style="margin-top:18px;">Pay securely</button>
-      <p style="font-size:12px; color:#889; margin-top:12px; text-align:center;">Payments are processed securely by Stripe. Your card details never touch our server.</p>
+      <button id="pay-btn" class="btn btn-primary btn-block btn-lg" style="margin-top:18px;">{{t:pay.paySecure}}</button>
+      <p style="font-size:12px; color:#889; margin-top:12px; text-align:center;">{{t:pay.safe}}</p>
     </div>
   </div>
 
   <footer class="footer"><div class="footer-bottom">{{settings.store_footer_text}}</div></footer>
 
+  <script>window.I18N = {{data:json:clientDictionary}};</script>
   <script src="https://js.stripe.com/v3/"></script>
   <script>
     var order = {{data:json:order}};
@@ -65,17 +67,21 @@
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+    var totalText = '$' + Number(order && order.total || 0).toFixed(2);
+    var payButtonText = tr('pay.payAmount').replace('{amount}', totalText);
+
     document.getElementById('order-number').textContent = order ? order.order_number : '';
-    document.getElementById('total').textContent = '$' + Number(order && order.total || 0).toFixed(2);
+    document.getElementById('total').textContent = totalText;
     if (order && order.shipping_city) {
-      document.getElementById('ship-to').textContent = 'Ships to ' + order.shipping_city + (order.shipping_country ? ', ' + order.shipping_country : '');
+      document.getElementById('ship-to').textContent =
+        tr('pay.shipsTo').replace('{city}', order.shipping_city + (order.shipping_country ? ', ' + order.shipping_country : ''));
     }
 
     document.getElementById('items').innerHTML = (items || []).map(function (item) {
       return '<div style="display:flex; gap:12px; padding:10px 0; border-bottom:1px solid #f4f4f4; align-items:center;">' +
         '<div style="flex:1;">' +
           '<div style="font-weight:600;">' + esc(item.product_name) + '</div>' +
-          '<div style="font-size:13px; color:#777;">Qty ' + esc(item.quantity) + ' × $' + Number(item.price || 0).toFixed(2) + '</div>' +
+          '<div style="font-size:13px; color:#777;">' + esc(tr('account.qty')) + ' ' + esc(item.quantity) + ' × $' + Number(item.price || 0).toFixed(2) + '</div>' +
         '</div>' +
         '<div style="font-weight:600;">$' + Number(item.total || 0).toFixed(2) + '</div>' +
       '</div>';
@@ -94,11 +100,12 @@
     }
 
     if (order && order.payment_status === 'paid') {
-      showNotice(message || 'Payment received.', 'ok');
+      showNotice(message || tr('pay.received'), 'ok');
     } else if (message) {
       showNotice(message, 'warn');
     } else if (failureMessage) {
-      showNotice('Previous attempt: ' + failureMessage + (declineCode ? ' (' + declineCode + ')' : ''), 'error');
+      var previous = tr('pay.previousAttempt').replace('{message}', failureMessage);
+      showNotice(previous + (declineCode ? ' (' + declineCode + ')' : ''), 'error');
     }
 
     if (!payable) {
@@ -108,7 +115,6 @@
       var errorEl = document.getElementById('pay-error');
       var stripeClient = null;
       var elements = null;
-      var currentIntentId = null;
 
       function showError(text) {
         errorEl.textContent = text;
@@ -117,7 +123,7 @@
 
       async function initPayment() {
         payBtn.disabled = true;
-        payBtn.textContent = 'Preparing secure payment...';
+        payBtn.textContent = tr('pay.preparing');
         try {
           var response = await fetch('/pay/' + encodeURIComponent(token) + '/intent', {
             method: 'POST',
@@ -126,18 +132,17 @@
           });
           var result = await response.json();
           if (!response.ok || !result.success || !result.clientSecret) {
-            throw new Error(result.error || 'Unable to start the payment.');
+            throw new Error(result.error || tr('pay.startFailed'));
           }
-          currentIntentId = result.paymentIntentId;
           stripeClient = Stripe(result.publishableKey);
           elements = stripeClient.elements({ clientSecret: result.clientSecret });
           elements.create('payment').mount('#payment-element');
           payBtn.disabled = false;
-          payBtn.textContent = 'Pay $' + Number(order.total || 0).toFixed(2) + ' securely';
+          payBtn.textContent = payButtonText;
         } catch (error) {
-          showError(error.message || 'Unable to start the payment.');
+          showError(error.message || tr('pay.startFailed'));
           payBtn.disabled = true;
-          payBtn.textContent = 'Payment unavailable';
+          payBtn.textContent = tr('pay.unavailable');
         }
       }
 
@@ -145,25 +150,25 @@
         if (!stripeClient || !elements) return;
         errorEl.style.display = 'none';
         payBtn.disabled = true;
-        payBtn.textContent = 'Processing...';
+        payBtn.textContent = tr('pay.processing');
         try {
           var result = await stripeClient.confirmPayment({
             elements: elements,
             confirmParams: { return_url: window.location.origin + '/pay/' + encodeURIComponent(token) + '?redirect=1' },
             redirect: 'if_required'
           });
-          if (result.error) throw new Error(result.error.message || 'Payment failed.');
+          if (result.error) throw new Error(result.error.message || tr('pay.failed'));
           var intent = result.paymentIntent;
-          if (!intent) throw new Error('Stripe did not return a payment status.');
+          if (!intent) throw new Error(tr('pay.noStatus'));
 
           if (intent.status === 'processing') {
-            showNotice('Your bank is still processing this payment. Refresh this page in a moment.', 'warn');
+            showNotice(tr('pay.stillProcessing'), 'warn');
             payBtn.disabled = true;
-            payBtn.textContent = 'Processing';
+            payBtn.textContent = tr('pay.processingShort');
             return;
           }
           if (intent.status !== 'succeeded') {
-            throw new Error('The payment was not completed. Please try another card.');
+            throw new Error(tr('pay.notCompleted'));
           }
 
           var confirm = await fetch('/pay/' + encodeURIComponent(token) + '/confirm', {
@@ -172,12 +177,12 @@
             body: JSON.stringify({ paymentIntentId: intent.id })
           });
           var confirmResult = await confirm.json();
-          if (!confirm.ok || !confirmResult.success) throw new Error(confirmResult.error || 'Payment confirmation is delayed.');
+          if (!confirm.ok || !confirmResult.success) throw new Error(confirmResult.error || tr('pay.confirmDelayed'));
           window.location.href = '/pay/' + encodeURIComponent(token) + '?paid=1';
         } catch (error) {
-          showError(error.message || 'Payment failed. Please try again.');
+          showError(error.message || tr('pay.failed'));
           payBtn.disabled = false;
-          payBtn.textContent = 'Pay $' + Number(order.total || 0).toFixed(2) + ' securely';
+          payBtn.textContent = payButtonText;
         }
       });
 

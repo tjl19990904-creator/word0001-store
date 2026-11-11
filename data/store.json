@@ -15,28 +15,32 @@
       "name": "Crystal Healing",
       "description": "Natural crystals for healing, meditation, and energy work",
       "sort_order": 1,
-      "created_at": "2026-10-28T10:46:06.318Z"
+      "created_at": "2026-10-28T10:46:06.318Z",
+      "name_zh": "水晶疗愈"
     },
     {
       "id": 2,
       "name": "Meditation Tools",
       "description": "Mala beads, instruments, and tools for meditation practice",
       "sort_order": 2,
-      "created_at": "2026-10-28T10:46:06.325Z"
+      "created_at": "2026-10-28T10:46:06.325Z",
+      "name_zh": "冥想用品"
     },
     {
       "id": 3,
       "name": "Spiritual Jewelry",
       "description": "Pendants and wearable healing crystal items",
       "sort_order": 3,
-      "created_at": "2026-10-28T10:46:06.327Z"
+      "created_at": "2026-10-28T10:46:06.327Z",
+      "name_zh": "灵性饰品"
     },
     {
       "id": 4,
       "name": "Musical Instruments",
       "description": "Traditional healing sound instruments",
       "sort_order": 4,
-      "created_at": "2026-10-28T10:46:06.330Z"
+      "created_at": "2026-10-28T10:46:06.330Z",
+      "name_zh": "乐器"
     }
   ],
   "products": [
@@ -67,7 +71,8 @@
       ],
       "primary_image": "/uploads/products/xun-pottery-flute.webp",
       "name_zh": "手工中国陶埙 · 十孔",
-      "short_description_zh": "探索十孔陶埙的独特韵味——以传统坭兴陶工艺手工制作的牛头埙，音色空灵悠远。"
+      "short_description_zh": "探索十孔陶埙的独特韵味——以传统坭兴陶工艺手工制作的牛头埙，音色空灵悠远。",
+      "description_zh": "## 十孔陶埙的独特韵味\n探索**十孔陶埙**的独特韵味——这是一件以传统坭兴陶工艺手工制作的牛头埙，既是乐器，也是器物之美。它融合了手工技艺与演奏功能，适合初学者，也适合有经验的演奏者。\n\n## 手工制作的讲究\n每一只陶埙都由匠人手工塑形与调音，采用**坭兴陶**原料，经窑火自然窑变而成。十孔设计带来更宽的音域，可覆盖低音 5 到高音 2，并提供 F、G、D、C 多种调性可选，适配不同的曲目与演奏习惯。\n\n## 适合放松与冥想\n陶埙的音色低回绵长，非常适合**放松与冥想**练习，能为日常静心、声音疗愈带来安宁的氛围。无论是自用还是赠礼，都是一件兼具文化底蕴与实用性的乐器。"
     },
     {
       "id": 2,
@@ -96,7 +101,8 @@
       ],
       "primary_image": "/uploads/products/desert-rose-crystal.webp",
       "name_zh": "0.25kg 沙漠玫瑰原石 · 疗愈水晶",
-      "short_description_zh": "释放原石的天然之美——0.25kg 沙漠玫瑰原石，自然形成的花瓣状晶簇，承载沙漠的宁静能量。"
+      "short_description_zh": "释放原石的天然之美——0.25kg 沙漠玫瑰原石，自然形成的花瓣状晶簇，承载沙漠的宁静能量。",
+      "description_zh": "## 天然原石的自然之美\n**0.25kg 沙漠玫瑰原石**保留了矿物原本的形态，自然形成的花瓣状晶簇层层叠叠，如同沙漠中盛开的玫瑰，每一块都独一无二。\n\n## 来自沙漠的宁静能量\n沙漠玫瑰生于干旱地带，结晶过程缓慢而稳定。它常被用于**冥想与空间陈设**，被认为能带来沉静、安定的能量，适合摆放在书桌、床头或疗愈空间。\n\n## 适合收藏与赠礼\n原石未经打磨，保留了粗粝而真实的肌理，适合**水晶收藏者**、手作爱好者，或作为一份有质感的礼物。因是天然矿物，颜色深浅与晶簇形态会存在个体差异。"
     },
     {
       "id": 3,
@@ -125,7 +131,8 @@
       ],
       "primary_image": "/uploads/products/crystal-healing-cube.webp",
       "name_zh": "0.5 英寸混合水晶疗愈立方 · 冥想能量",
-      "short_description_zh": "体验混合水晶疗愈立方的和谐能量——几何精准的天然水晶立方，为冥想带来大地的力量。"
+      "short_description_zh": "体验混合水晶疗愈立方的和谐能量——几何精准的天然水晶立方，为冥想带来大地的力量。",
+      "description_zh": "## 几何与天然能量的结合\n**0.5 英寸混合水晶疗愈立方**将几何的精准与天然水晶的能量结合，尺寸恰好可以握于掌心，适合冥想时持握，也适合摆放在祭坛或工作台上。\n\n## 多种水晶，不同频率\n混合装包含多种天然水晶，每一种都保留了自身的**振动特性**。立方体造型带来稳定的对称感，让能量分布更均衡，适合作为冥想、呼吸练习的专注物件。\n\n## 小巧便携\n边长约 1.3 厘米，重量轻，便于随身携带。可放在口袋、钱包或随身的疗愈包里，随时取用。"
     },
     {
       "id": 4,
@@ -154,7 +161,8 @@
       ],
       "primary_image": "/uploads/products/crystal-spiritual-pendant.webp",
       "name_zh": "1.1 英寸混合水晶灵性吊坠 · 疗愈护佑",
-      "short_description_zh": "为日常生活注入转化能量——精美工艺的灵性项链，中央镶嵌璀璨宝石。"
+      "short_description_zh": "为日常生活注入转化能量——精美工艺的灵性项链，中央镶嵌璀璨宝石。",
+      "description_zh": "## 为日常注入转化能量\n**1.1 英寸混合水晶灵性吊坠**是一件工艺精美的灵性项链，中央镶嵌璀璨宝石，为日常穿搭带来沉稳而有力量的气质。\n\n## 疗愈与护佑\n天然水晶被认为具有**疗愈与护佑**的寓意。吊坠贴身佩戴，既是装饰，也是一种提醒——在忙碌中保持内在的稳定与清晰。\n\n## 适合日常与仪式\n无论是日常佩戴、冥想练习，还是作为礼物赠予重要的人，这件吊坠都足够得体。随附挂绳，可直接佩戴。"
     },
     {
       "id": 5,
@@ -183,7 +191,8 @@
       ],
       "primary_image": "/uploads/products/sandalwood-mala-bracelet.webp",
       "name_zh": "8mm 迈索尔檀香木念珠手串 · 冥想",
-      "short_description_zh": "感受木念珠的至纯本质——8mm 正宗迈索尔檀香木念珠手串，承袭檀香的神圣特质。"
+      "short_description_zh": "感受木念珠的至纯本质——8mm 正宗迈索尔檀香木念珠手串，承袭檀香的神圣特质。",
+      "description_zh": "## 至纯的木质念珠\n**8mm 迈索尔檀香木念珠手串**选用正宗迈索尔檀香木打磨而成，木质细腻，纹理自然，随着佩戴时间增长，色泽会愈发温润。\n\n## 檀香的神圣特质\n迈索尔檀香在传统中被视为**神圣之木**，香气沉静持久。佩戴或把玩时，淡淡的木香有助于安定心神，常被用于冥想、诵念与日常静心。\n\n## 佩戴与保养\n手串周长适配多数手腕，弹力绳串制，佩戴方便。建议避免长时间浸水与暴晒，以保持木质与香气。"
     }
   ],
   "customers": [

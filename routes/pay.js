@@ -21,42 +21,26 @@ const ps = require('../lib/payment-status');
 
 const router = express.Router();
 
+// Shared renderer (i18n + partials). Retry-payment pages must never be cached.
+const sharedRender = require('../lib/render');
 function renderPage(res, templateName, data = {}) {
-  const settings = db.getAllSettings();
-  const merged = { ...data, settings };
-  const templatePath = path.join(__dirname, '..', 'views', templateName);
-  if (!fs.existsSync(templatePath)) return res.status(404).send('Template not found: ' + templateName);
-
-  let html = fs.readFileSync(templatePath, 'utf8');
-  html = html.replace(/\{\{data:json:(\w+)\}\}/g, (match, key) => {
-    const val = merged[key];
-    return val !== undefined ? JSON.stringify(val) : 'null';
-  });
-  html = html.replace(/\{\{settings\.(\w+)\}\}/g, (match, key) => {
-    return settings[key] !== undefined ? String(settings[key]) : '';
-  });
-  html = html.replace(/\{\{data\.(\w+(?:\.\w+)*)\}\}/g, (match, key) => {
-    const parts = key.split('.');
-    let val = merged;
-    for (const part of parts) { val = val ? val[part] : undefined; }
-    return val !== undefined && val !== null ? String(val) : '';
-  });
-  html = html.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    return merged[key] !== undefined ? String(merged[key]) : '';
-  });
   res.set('Cache-Control', 'no-store');
-  return res.send(html);
+  return sharedRender(res, templateName, data);
 }
 
-function renderMissing(res) {
+function renderMissing(req, res) {
+  const lang = req.locale === 'zh-CN' ? 'zh-CN' : 'en';
   return res.status(404).send(
-    '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payment link expired</title>' +
+    '<!DOCTYPE html><html lang="' + lang + '"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<meta name="robots" content="noindex,nofollow">' +
+    '<title>' + req.t('pay.expiredTitle') + '</title>' +
     '<link rel="stylesheet" href="/css/style.css"></head><body>' +
     '<div class="container" style="padding:80px 20px;max-width:640px;">' +
-    '<h1 style="font-size:1.6em;margin-bottom:12px;">This payment link is no longer valid</h1>' +
-    '<p style="color:#556;">The link may have expired, or the order was already completed. ' +
-    'Please sign in to your account to check the order status, or contact us for a new link.</p>' +
-    '<p style="margin-top:24px;"><a class="btn btn-primary" href="/account">Go to my account</a></p>' +
+    '<h1 style="font-size:1.6em;margin-bottom:12px;">' + req.t('pay.expiredTitle') + '</h1>' +
+    '<p style="color:#556;">' + req.t('pay.expiredBody') + '</p>' +
+    '<p style="margin-top:24px;"><a class="btn btn-primary" href="' + req.localePrefix + '/account">' +
+    req.t('pay.goToAccount') + '</a></p>' +
     '</div></body></html>'
   );
 }
@@ -76,7 +60,7 @@ function publicOrder(order) {
 
 router.get('/:token', async (req, res) => {
   let order = ps.findOrderByToken(req.params.token);
-  if (!order) return renderMissing(res);
+  if (!order) return renderMissing(req, res);
 
   // Returning from Stripe: verify the intent server-side before trusting it.
   const intentId = String(req.query.payment_intent || '');
@@ -100,12 +84,12 @@ router.get('/:token', async (req, res) => {
   const payable = ps.isPayable(order);
 
   let message = '';
-  if (order.payment_status === 'paid') message = 'Payment received. Thank you — your order is confirmed.';
-  else if (order.status === 'cancelled') message = 'This order has been cancelled. Please contact us if you still want these items.';
-  else if (order.payment_status === 'refunded') message = 'This order was refunded.';
+  if (order.payment_status === 'paid') message = req.t('pay.received');
+  else if (order.status === 'cancelled') message = req.t('pay.cancelledOrder');
+  else if (order.payment_status === 'refunded') message = req.t('pay.refunded');
 
   return renderPage(res, 'pay.html', {
-    pageTitle: 'Pay for order ' + order.order_number,
+    pageTitle: req.t('pay.title') + ' · ' + order.order_number,
     token: order.payment_token,
     order: publicOrder(order),
     orderItems: items.map(item => ({
@@ -124,17 +108,17 @@ router.get('/:token', async (req, res) => {
 router.post('/:token/intent', async (req, res) => {
   try {
     const order = ps.findOrderByToken(req.params.token);
-    if (!order) return res.status(404).json({ success: false, error: 'This payment link is no longer valid.' });
+    if (!order) return res.status(404).json({ success: false, error: req.t('pay.errLinkExpired') });
     if (!ps.isPayable(order)) {
-      return res.status(409).json({ success: false, error: 'This order can no longer be paid online.' });
+      return res.status(409).json({ success: false, error: req.t('pay.errNotPayable') });
     }
 
     const account = getStripeAccount(order.payment_account_id, true) || getStripeAccount(order.payment_account_id, false);
-    if (!account) return res.status(503).json({ success: false, error: 'Card payments are temporarily unavailable.' });
+    if (!account) return res.status(503).json({ success: false, error: req.t('pay.errUnavailable') });
 
     const amount = ps.moneyToCents(order.total);
     if (!Number.isSafeInteger(amount) || amount <= 0) {
-      return res.status(400).json({ success: false, error: 'The order amount is invalid.' });
+      return res.status(400).json({ success: false, error: req.t('pay.errInvalidAmount') });
     }
 
     const intent = await stripe(account.config_data.secret_key).paymentIntents.create({
@@ -167,30 +151,30 @@ router.post('/:token/intent', async (req, res) => {
     });
   } catch (error) {
     console.error('Retry PaymentIntent creation failed:', error.message);
-    return res.status(502).json({ success: false, error: 'Unable to start the payment. Please try again.' });
+    return res.status(502).json({ success: false, error: req.t('pay.errStart') });
   }
 });
 
 router.post('/:token/confirm', async (req, res) => {
   try {
     const order = ps.findOrderByToken(req.params.token);
-    if (!order) return res.status(404).json({ success: false, error: 'This payment link is no longer valid.' });
+    if (!order) return res.status(404).json({ success: false, error: req.t('pay.errLinkExpired') });
 
     const intentId = String(req.body.paymentIntentId || '');
-    if (!intentId.startsWith('pi_')) return res.status(400).json({ success: false, error: 'Invalid payment reference.' });
+    if (!intentId.startsWith('pi_')) return res.status(400).json({ success: false, error: req.t('pay.errInvalidRef') });
     if (String(order.transaction_id) !== intentId) {
-      return res.status(409).json({ success: false, error: 'Payment could not be verified.' });
+      return res.status(409).json({ success: false, error: req.t('pay.errUnverified') });
     }
 
     const account = getStripeAccount(order.payment_account_id, true) || getStripeAccount(order.payment_account_id, false);
-    if (!account) return res.status(503).json({ success: false, error: 'Card payments are temporarily unavailable.' });
+    if (!account) return res.status(503).json({ success: false, error: req.t('pay.errUnavailable') });
 
     const intent = await stripe(account.config_data.secret_key).paymentIntents.retrieve(intentId);
     if (ps.isPendingIntent(intent)) {
       return res.status(202).json({
         success: false,
         processing: true,
-        error: 'Your bank is still processing this payment. Refresh this page in a moment.'
+        error: req.t('pay.errStillProcessing')
       });
     }
     if (intent.status !== 'succeeded') {
@@ -204,12 +188,12 @@ router.post('/:token/confirm', async (req, res) => {
       });
     }
     if (!ps.markOrderPaid(order, intent)) {
-      return res.status(409).json({ success: false, error: 'Payment does not match this order.' });
+      return res.status(409).json({ success: false, error: req.t('pay.errMismatch') });
     }
     return res.json({ success: true, orderNumber: order.order_number, paymentStatus: 'paid' });
   } catch (error) {
     console.error('Retry payment confirmation failed:', error.message);
-    return res.status(502).json({ success: false, error: 'Payment confirmation is delayed. Refresh this page in a moment.' });
+    return res.status(502).json({ success: false, error: req.t('pay.errDelayed') });
   }
 });
 

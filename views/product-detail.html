@@ -1,10 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{data.product.name}} - {{settings.store_name}}</title>
   <meta name="description" content="{{data.product.short_description}}">
+  <link rel="canonical" href="{{canonicalUrl}}">
+  <link rel="alternate" hreflang="en" href="{{altEnUrl}}">
+  <link rel="alternate" hreflang="zh-CN" href="{{altZhUrl}}">
+  <link rel="alternate" hreflang="x-default" href="{{altEnUrl}}">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -12,50 +16,53 @@
 
   <header class="header">
     <div class="header-inner">
-      <a href="/" class="logo">{{settings.store_name}}</a>
+      <a href="{{homeUrl}}" class="logo">{{settings.store_name}}</a>
       <nav>
         <ul class="nav-menu">
-          <li><a href="/">Home</a></li>
-          <li><a href="/products">Products</a></li>
-          <li><a href="/track-order">Track Order</a></li>
-          <li><a href="/about">About</a></li>
-          <li><a href="/contact">Contact</a></li>
+          <li><a href="/">{{t:nav.home}}</a></li>
+          <li><a href="/products">{{t:nav.products}}</a></li>
+          <li><a href="/track-order">{{t:nav.trackOrder}}</a></li>
+          <li><a href="/about">{{t:nav.about}}</a></li>
+          <li><a href="/contact">{{t:nav.contact}}</a></li>
         </ul>
       </nav>
       <div class="header-actions">
         <a href="/cart" class="cart-link">
-          <span>Cart</span>
+          <span>{{t:nav.cart}}</span>
           <span class="cart-count" id="cart-count" style="display:none;">0</span>
         </a>
+        {{> lang-switcher}}
       </div>
     </div>
   </header>
 
   <div class="container">
-    <div id="product-detail-container"></div>
-    
+    <div id="product-detail-container">
+      <p style="text-align:center; color:#999; padding:60px 20px;">{{t:common.loading}}</p>
+    </div>
+
     <!-- Tabs -->
     <div class="product-detail-tabs">
       <div class="tab-buttons">
-        <button class="tab-btn active" onclick="switchTab('description', this)">Description</button>
-        <button class="tab-btn" onclick="switchTab('shipping', this)">Shipping & Returns</button>
+        <button class="tab-btn active" onclick="switchTab('description', this)">{{t:product.description}}</button>
+        <button class="tab-btn" onclick="switchTab('shipping', this)">{{t:product.shippingTab}}</button>
       </div>
       <div class="tab-content active" id="tab-description">
         <div id="desc-content"></div>
       </div>
       <div class="tab-content" id="tab-shipping">
-        <h3>Shipping Information</h3>
-        <p>We offer standard shipping on all orders. Free shipping on orders over ${{settings.free_shipping_threshold}}.</p>
-        <p>Standard shipping rate: ${{settings.flat_shipping_rate}}</p>
-        <p>Estimated delivery time: 7-15 business days.</p>
-        <h3 style="margin-top:20px;">Return Policy</h3>
-        <p>We accept returns within 30 days of delivery. Items must be in original condition. Contact us at {{settings.store_email}} for return instructions.</p>
+        <h3>{{t:product.shippingTitle}}</h3>
+        <p>{{data.shippingFreeText}}</p>
+        <p>{{data.shippingRateText}}</p>
+        <p>{{t:product.shippingTime}}</p>
+        <h3 style="margin-top:20px;">{{t:product.returnTitle}}</h3>
+        <p>{{data.returnBodyText}}</p>
       </div>
     </div>
 
     <!-- Related Products -->
     <div class="section-title" id="related-title" style="display:none;">
-      <h2>You May Also Like</h2>
+      <h2>{{t:product.related}}</h2>
     </div>
     <div class="product-grid" id="related-grid"></div>
   </div>
@@ -64,68 +71,107 @@
     <div class="footer-bottom">{{settings.store_footer_text}}</div>
   </footer>
 
+  <script>window.I18N = {{data:json:clientDictionary}};</script>
   <script src="/js/store.js"></script>
   <script>
     const product = {{data:json:product}};
     const related = {{data:json:related}};
 
+    const esc = (value) => String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const money = (value) => Number(value || 0).toFixed(2);
+
     // Render product detail
     const container = document.getElementById('product-detail-container');
     if (container && product) {
+      const inStock = Number(product.stock) > 0;
       container.innerHTML = `
         <div class="product-detail">
           <div class="product-detail-images">
             <div class="main-image">
-              <img id="main-product-image" src="${product.primary_image}" alt="${product.name}" 
-                   onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22500%22 height=%22500%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22500%22 height=%22500%22/%3E%3Ctext x=%22250%22 y=%22250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2218%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+              <img id="main-product-image" src="${esc(product.primary_image)}" alt="${esc(product.name)}"
+                   onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22500%22 height=%22500%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22500%22 height=%22500%22/%3E%3C/svg%3E'">
             </div>
-            ${product.image_list.length > 1 ? `
+            ${product.image_list && product.image_list.length > 1 ? `
               <div class="thumbnails">
                 ${product.image_list.map((img, i) => `
-                  <div class="thumb ${i === 0 ? 'active' : ''}" onclick="changeMainImage('${img}', this)">
-                    <img src="${img}" alt="Thumbnail ${i+1}">
+                  <div class="thumb ${i === 0 ? 'active' : ''}" onclick="changeMainImage('${esc(img)}', this)">
+                    <img src="${esc(img)}" alt="${esc(tr('product.thumbnail'))} ${i + 1}">
                   </div>
                 `).join('')}
               </div>
             ` : ''}
           </div>
           <div class="product-detail-info">
-            <h1>${product.name}</h1>
-            ${product.short_description ? `<p class="short-desc">${product.short_description}</p>` : ''}
+            <h1>${esc(product.name)}</h1>
+            ${product.short_description ? `<p class="short-desc">${esc(product.short_description)}</p>` : ''}
             <div class="price">
-              $${product.price.toFixed(2)}
-              ${product.compare_price ? `<span class="compare-price" style="font-size:18px; color:#999; text-decoration:line-through; margin-left:12px;">$${product.compare_price.toFixed(2)}</span>` : ''}
+              $${money(product.price)}
+              ${product.compare_price ? `<span class="compare-price" style="font-size:18px; color:#999; text-decoration:line-through; margin-left:12px;">$${money(product.compare_price)}</span>` : ''}
             </div>
             <div class="product-meta">
-              ${product.sku ? `<p><strong>SKU:</strong> ${product.sku}</p>` : ''}
-              ${product.category_name ? `<p><strong>Category:</strong> ${product.category_name}</p>` : ''}
-              <p><strong>Availability:</strong> ${product.stock > 0 ? '<span style="color:#28a745;">In Stock</span>' : '<span style="color:#dc3545;">Out of Stock</span>'}</p>
-              ${product.weight ? `<p><strong>Weight:</strong> ${product.weight} kg</p>` : ''}
+              ${product.sku ? `<p><strong>${esc(tr('product.sku'))}:</strong> ${esc(product.sku)}</p>` : ''}
+              ${product.category_name ? `<p><strong>${esc(tr('product.category'))}:</strong> ${esc(product.category_name)}</p>` : ''}
+              <p><strong>${esc(tr('product.availability'))}:</strong> ${inStock
+                ? `<span style="color:#28a745;">${esc(tr('product.inStock'))}</span>`
+                : `<span style="color:#dc3545;">${esc(tr('product.outOfStock'))}</span>`}</p>
+              ${product.weight ? `<p><strong>${esc(tr('product.weight'))}:</strong> ${esc(product.weight)} kg</p>` : ''}
             </div>
-            ${product.stock > 0 ? `
+            ${inStock ? `
               <div class="quantity-selector">
-                <button onclick="changeQty(-1, 'qty-input')">-</button>
-                <input type="number" id="qty-input" value="1" min="1" max="${product.stock}" readonly>
-                <button onclick="changeQty(1, 'qty-input')">+</button>
+                <button onclick="changeQty(-1, 'qty-input')" aria-label="-">-</button>
+                <input type="number" id="qty-input" value="1" min="1" max="${Number(product.stock)}" readonly aria-label="${esc(tr('product.quantity'))}">
+                <button onclick="changeQty(1, 'qty-input')" aria-label="+">+</button>
               </div>
-              <button type="button" class="btn btn-primary btn-lg" style="width:100%;" onclick="buyNow(${product.id}, parseInt(document.getElementById('qty-input').value))">
-                Buy Now - Proceed to Payment
+              <button type="button" class="btn btn-primary btn-lg" style="width:100%;" onclick="buyNow(${product.id}, parseInt(document.getElementById('qty-input').value, 10))">
+                ${esc(tr('home.product.buyNow'))}
               </button>
-              <button type="button" class="btn btn-secondary btn-lg" style="width:100%; margin-top:10px;" onclick="addToCart(${product.id}, parseInt(document.getElementById('qty-input').value))">
-                Add to Cart
+              <button type="button" class="btn btn-secondary btn-lg" style="width:100%; margin-top:10px;" onclick="addToCart(${product.id}, parseInt(document.getElementById('qty-input').value, 10))">
+                ${esc(tr('home.product.addToCart'))}
               </button>
             ` : `
-              <button class="btn btn-secondary btn-lg" style="width:100%;" disabled>Out of Stock</button>
+              <button class="btn btn-secondary btn-lg" style="width:100%;" disabled>${esc(tr('product.outOfStock'))}</button>
             `}
           </div>
         </div>
       `;
     }
 
-    // Description
+    // Description. Stored as light markdown (## headings, **bold**, blank-line
+    // paragraphs); escape first, then apply the formatting.
     const descEl = document.getElementById('desc-content');
+
+    function renderRichText(text) {
+      const bold = value => value.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      const blocks = [];
+      let paragraph = [];
+      const flush = () => {
+        if (paragraph.length) {
+          blocks.push('<p>' + paragraph.join('<br>') + '</p>');
+          paragraph = [];
+        }
+      };
+      String(text).split(/\r?\n/).forEach(rawLine => {
+        const line = rawLine.trim();
+        if (!line) { flush(); return; }
+        const heading = line.match(/^#{1,4}\s+(.*)$/);
+        if (heading) {
+          flush();
+          blocks.push('<h3>' + bold(esc(heading[1])) + '</h3>');
+          return;
+        }
+        paragraph.push(bold(esc(line)));
+      });
+      flush();
+      return blocks.join('');
+    }
+
     if (descEl) {
-      descEl.innerHTML = product.description ? product.description.replace(/\n/g, '<br>') : '<p>No description available.</p>';
+      descEl.innerHTML = product && product.description
+        ? renderRichText(product.description)
+        : '<p>' + esc(tr('product.noDescription')) + '</p>';
     }
 
     // Related products
@@ -136,18 +182,18 @@
       relGrid.innerHTML = related.map(p => `
         <div class="product-card">
           <div class="product-image">
-            <a href="/products/${p.slug}">
-              <img src="${p.primary_image}" alt="${p.name}" 
-                   onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext x=%22150%22 y=%22150%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2216%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+            <a href="/products/${encodeURIComponent(p.slug)}">
+              <img src="${esc(p.primary_image)}" alt="${esc(p.name)}" loading="lazy"
+                   onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E'">
             </a>
           </div>
           <div class="product-info">
-            <div class="product-name"><a href="/products/${p.slug}">${p.name}</a></div>
+            <div class="product-name"><a href="/products/${encodeURIComponent(p.slug)}">${esc(p.name)}</a></div>
             <div style="margin-bottom:12px;">
-              <span class="product-price">$${p.price.toFixed(2)}</span>
+              <span class="product-price">$${money(p.price)}</span>
             </div>
-            <button class="btn-buy-now" onclick="buyNow(${p.id})">Buy Now - Proceed to Payment</button>
-            <button class="btn-add-cart" onclick="addToCart(${p.id})">Add to Cart</button>
+            <button class="btn-buy-now" onclick="buyNow(${p.id})">${esc(tr('home.product.buyNow'))}</button>
+            <button class="btn-add-cart" onclick="addToCart(${p.id})">${esc(tr('home.product.addToCart'))}</button>
           </div>
         </div>
       `).join('');

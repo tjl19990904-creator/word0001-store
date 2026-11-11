@@ -99,22 +99,27 @@ router.get('/', (req, res) => {
 
 // ===== Products listing =====
 router.get('/products', (req, res) => {
+  const locale = req.locale || i18n.DEFAULT_LOCALE;
   const page = parseInt(req.query.page) || 1;
   const perPage = 12;
   const categoryId = req.query.category;
   const search = req.query.search;
 
   let products = db.findAll('products', { where: { status: 'active' } });
-  
+
   if (categoryId) {
     products = products.filter(p => p.category_id == categoryId);
   }
   if (search) {
     const s = search.toLowerCase();
-    products = products.filter(p => 
+    // Search both languages so a Chinese visitor can find products by their
+    // Chinese name even while browsing the English page, and vice versa.
+    products = products.filter(p =>
       (p.name && p.name.toLowerCase().includes(s)) ||
+      (p.name_zh && p.name_zh.toLowerCase().includes(s)) ||
       (p.description && p.description.toLowerCase().includes(s)) ||
-      (p.short_description && p.short_description.toLowerCase().includes(s))
+      (p.short_description && p.short_description.toLowerCase().includes(s)) ||
+      (p.short_description_zh && p.short_description_zh.toLowerCase().includes(s))
     );
   }
 
@@ -129,43 +134,100 @@ router.get('/products', (req, res) => {
   const offset = (page - 1) * perPage;
   products = products.slice(offset, offset + perPage);
 
-  const categories = db.findAll('categories', { orderBy: 'sort_order ASC' });
+  const categories = db.findAll('categories', { orderBy: 'sort_order ASC' })
+    .map(category => ({
+      ...category,
+      name: i18n.localizeField(locale, category.name_zh, category.name)
+    }));
 
-  products.forEach(p => {
+  // Whitelist what the grid needs; localized names fall back to English.
+  const productCards = products.map(p => {
     const cat = db.findOne('categories', { id: p.category_id });
-    p.category_name = cat ? cat.name : '';
-    p.image_list = p.images ? safeParseArr(p.images) : [];
-    p.primary_image = p.image_list.length > 0 ? p.image_list[0] : '';
+    const imageList = p.images ? safeParseArr(p.images) : [];
+    return {
+      id: p.id,
+      slug: p.slug,
+      name: i18n.localizeField(locale, p.name_zh, p.name),
+      short_description: i18n.localizeField(locale, p.short_description_zh, p.short_description),
+      category_name: cat ? i18n.localizeField(locale, cat.name_zh, cat.name) : '',
+      price: Number(p.price) || 0,
+      compare_price: p.compare_price ? Number(p.compare_price) : null,
+      primary_image: imageList.length > 0 ? imageList[0] : ''
+    };
   });
 
-  renderPage(res, 'products.html', { 
-    products, categories, currentPage: page, totalPages,
-    selectedCategory: categoryId || '', search: search || '', pageTitle: 'Products' 
+  renderPage(res, 'products.html', {
+    products: productCards, categories, currentPage: page, totalPages,
+    selectedCategory: categoryId || '', search: search || '',
+    pageTitle: i18n.t(locale, 'products.title')
   });
 });
 
 // ===== Product detail =====
 router.get('/products/:slug', (req, res) => {
-  const product = db.findOne('products', { slug: req.params.slug });
-  
-  if (!product || product.status !== 'active') {
-    return res.status(404).send('<h1>Product not found</h1><p><a href="/products">Back to products</a></p>');
+  const locale = req.locale || i18n.DEFAULT_LOCALE;
+  const record = db.findOne('products', { slug: req.params.slug });
+
+  if (!record || record.status !== 'active') {
+    return res.status(404).send(
+      '<h1>' + req.t('product.notFound') + '</h1>' +
+      '<p>' + req.t('product.notFoundBody') + '</p>' +
+      '<p><a href="' + req.localePrefix + '/products">' + req.t('product.backToProducts') + '</a></p>'
+    );
   }
 
-  const cat = db.findOne('categories', { id: product.category_id });
-  product.category_name = cat ? cat.name : '';
-  product.image_list = product.images ? safeParseArr(product.images) : [];
-  product.primary_image = product.image_list.length > 0 ? product.image_list[0] : '';
+  const cat = db.findOne('categories', { id: record.category_id });
+  const imageList = record.images ? safeParseArr(record.images) : [];
+
+  // Whitelist + localize. Internal cost and SEO-only fields stay on the server.
+  const product = {
+    id: record.id,
+    slug: record.slug,
+    name: i18n.localizeField(locale, record.name_zh, record.name),
+    short_description: i18n.localizeField(locale, record.short_description_zh, record.short_description),
+    description: i18n.localizeField(locale, record.description_zh, record.description),
+    sku: record.sku || '',
+    stock: Number(record.stock) || 0,
+    weight: record.weight || '',
+    price: Number(record.price) || 0,
+    compare_price: record.compare_price ? Number(record.compare_price) : null,
+    category_name: cat ? i18n.localizeField(locale, cat.name_zh, cat.name) : '',
+    image_list: imageList,
+    primary_image: imageList.length > 0 ? imageList[0] : ''
+  };
 
   // Related products
-  let related = db.findAll('products', { where: { category_id: product.category_id, status: 'active' } });
-  related = related.filter(p => p.id !== product.id).slice(0, 4);
-  related.forEach(p => {
-    p.image_list = p.images ? safeParseArr(p.images) : [];
-    p.primary_image = p.image_list.length > 0 ? p.image_list[0] : '';
-  });
+  const related = db.findAll('products', { where: { category_id: record.category_id, status: 'active' } })
+    .filter(p => p.id !== record.id)
+    .slice(0, 4)
+    .map(p => {
+      const images = p.images ? safeParseArr(p.images) : [];
+      return {
+        id: p.id,
+        slug: p.slug,
+        name: i18n.localizeField(locale, p.name_zh, p.name),
+        price: Number(p.price) || 0,
+        primary_image: images.length > 0 ? images[0] : ''
+      };
+    });
 
-  renderPage(res, 'product-detail.html', { product, related, pageTitle: product.name });
+  const settings = getSettings();
+  const money = value => '$' + (Number(value) || 0).toFixed(2);
+
+  renderPage(res, 'product-detail.html', {
+    product,
+    related,
+    shippingFreeText: i18n.t(locale, 'product.shippingFree', {
+      amount: money(settings.free_shipping_threshold)
+    }),
+    shippingRateText: i18n.t(locale, 'product.shippingRate', {
+      rate: money(settings.flat_shipping_rate)
+    }),
+    returnBodyText: i18n.t(locale, 'product.returnBody', {
+      email: settings.store_email || ''
+    }),
+    pageTitle: product.name
+  });
 });
 
 // ===== Cart (customer-only, database backed) =====
@@ -364,7 +426,7 @@ router.post('/checkout/place-order', auth.requireCustomerPage, (req, res) => {
 
   renderPage(res, 'order-confirmation.html', {
     orderNumber, orderId, total: (pricing.totalCents / 100).toFixed(2), email: customer.email || email,
-    pageTitle: 'Order Confirmed'
+    pageTitle: req.t('orderConfirm.title')
   });
 });
 
@@ -395,21 +457,42 @@ router.get('/track-order', auth.requireCustomerPage, (req, res) => {
   renderPage(res, 'track-order.html', {
     order, orderItems, shipment, trackingHistory,
     customer: auth.publicCustomer(customer),
-    searchedOrderNumber: orderNumber || '', pageTitle: 'Track Order'
+    searchedOrderNumber: orderNumber || '',
+    pageTitle: req.t('track.title')
   });
 });
 
 // ===== About / Contact =====
 router.get('/about', (req, res) => {
-  renderPage(res, 'about.html', { pageTitle: 'About Us' });
+  const settings = getSettings();
+  renderPage(res, 'about.html', {
+    heading: req.t('about.heading', { store: settings.store_name || '' }),
+    intro3: req.t('about.intro3', { email: settings.store_email || '' }),
+    pageTitle: req.t('about.title')
+  });
 });
 
 router.get('/contact', (req, res) => {
-  renderPage(res, 'contact.html', { pageTitle: 'Contact Us' });
+  renderPage(res, 'contact.html', {
+    sent: req.query.sent === '1',
+    successDisplay: req.query.sent === '1' ? 'block' : 'none',
+    errorDisplay: req.query.error === '1' ? 'block' : 'none',
+    pageTitle: req.t('contact.title')
+  });
 });
 
+// Post/Redirect/Get so a refresh does not resend the message.
 router.post('/contact', (req, res) => {
-  renderPage(res, 'contact.html', { pageTitle: 'Contact Us' });
+  const name = String(req.body.name || '').trim();
+  const email = String(req.body.email || '').trim();
+  const message = String(req.body.message || '').trim();
+
+  if (!name || !email || !message || !email.includes('@')) {
+    return res.redirect('/contact?error=1');
+  }
+
+  console.log('[contact] message received:', { name, email, subject: req.body.subject || '', length: message.length });
+  return res.redirect('/contact?sent=1');
 });
 
 // Helper function

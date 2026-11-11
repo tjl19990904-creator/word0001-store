@@ -1,9 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Products - {{settings.store_name}}</title>
+  <title>{{t:products.title}} - {{settings.store_name}}</title>
+  <meta name="description" content="{{t:meta.description}}">
+  <link rel="canonical" href="{{canonicalUrl}}">
+  <link rel="alternate" hreflang="en" href="{{altEnUrl}}">
+  <link rel="alternate" hreflang="zh-CN" href="{{altZhUrl}}">
+  <link rel="alternate" hreflang="x-default" href="{{altEnUrl}}">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -11,45 +16,50 @@
 
   <header class="header">
     <div class="header-inner">
-      <a href="/" class="logo">{{settings.store_name}}</a>
+      <a href="{{homeUrl}}" class="logo">{{settings.store_name}}</a>
       <nav>
         <ul class="nav-menu">
-          <li><a href="/">Home</a></li>
-          <li><a href="/products">Products</a></li>
-          <li><a href="/track-order">Track Order</a></li>
-          <li><a href="/about">About</a></li>
-          <li><a href="/contact">Contact</a></li>
+          <li><a href="/">{{t:nav.home}}</a></li>
+          <li><a href="/products">{{t:nav.products}}</a></li>
+          <li><a href="/track-order">{{t:nav.trackOrder}}</a></li>
+          <li><a href="/about">{{t:nav.about}}</a></li>
+          <li><a href="/contact">{{t:nav.contact}}</a></li>
         </ul>
       </nav>
       <div class="header-actions">
         <a href="/cart" class="cart-link">
-          <span>Cart</span>
+          <span>{{t:nav.cart}}</span>
           <span class="cart-count" id="cart-count" style="display:none;">0</span>
         </a>
+        {{> lang-switcher}}
       </div>
     </div>
   </header>
 
   <div class="container" style="margin-top: 30px;">
     <div class="section-title">
-      <h2>All Products</h2>
-      <p>Browse our complete collection</p>
+      <h2>{{t:products.title}}</h2>
+      <p>{{t:products.subtitle}}</p>
     </div>
 
     <!-- Category Filter & Search -->
     <div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; align-items:center;">
-      <form method="GET" action="/products" style="display:flex; gap:8px; flex:1;">
-        <input type="text" name="search" placeholder="Search products..." value="{{data.search}}" 
+      <form method="GET" action="/products" style="display:flex; gap:8px; flex:1; min-width:240px;">
+        <input type="text" name="search" placeholder="{{t:products.searchPlaceholder}}" value="{{data.search}}"
                style="flex:1; padding:10px 14px; border:1px solid #e0e0e0; border-radius:8px; font-size:14px;">
-        <button type="submit" class="btn btn-primary">Search</button>
+        <button type="submit" class="btn btn-primary">{{t:products.search}}</button>
       </form>
-      <select id="category-filter" onchange="window.location.href=this.value" 
+      <select id="category-filter" onchange="window.location.href=this.value"
               style="padding:10px 14px; border:1px solid #e0e0e0; border-radius:8px; font-size:14px;">
-        <option value="/products">All Categories</option>
+        <option value="/products">{{t:products.allCategories}}</option>
       </select>
     </div>
 
-    <div class="product-grid" id="product-grid"></div>
+    <p id="result-count" style="color:#777; font-size:14px; margin-bottom:12px;"></p>
+
+    <div class="product-grid" id="product-grid">
+      <p style="grid-column:1/-1; text-align:center; color:#999; padding:40px;">{{t:common.loading}}</p>
+    </div>
 
     <!-- Pagination -->
     <div class="pagination" id="pagination"></div>
@@ -59,25 +69,38 @@
     <div class="footer-bottom">{{settings.store_footer_text}}</div>
   </footer>
 
+  <script>window.I18N = {{data:json:clientDictionary}};</script>
   <script src="/js/store.js"></script>
   <script>
     const products = {{data:json:products}};
     const categories = {{data:json:categories}};
     const currentPage = {{data.currentPage}};
     const totalPages = {{data.totalPages}};
-    const selectedCategory = "{{data.selectedCategory}}";
-    const searchQuery = "{{data.search}}";
+    const selectedCategory = {{data:json:selectedCategory}};
+    const searchQuery = {{data:json:search}};
+
+    const esc = (value) => String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const money = (value) => Number(value || 0).toFixed(2);
 
     // Populate categories
     const catFilter = document.getElementById('category-filter');
     if (catFilter && categories.length > 0) {
       categories.forEach(c => {
         const opt = document.createElement('option');
-        opt.value = '/products?category=' + c.id + (searchQuery ? '&search=' + searchQuery : '');
+        opt.value = '/products?category=' + encodeURIComponent(c.id) + (searchQuery ? '&search=' + encodeURIComponent(searchQuery) : '');
         opt.textContent = c.name;
         if (String(selectedCategory) === String(c.id)) opt.selected = true;
         catFilter.appendChild(opt);
       });
+    }
+
+    // Result count (hidden when a filter produced nothing, the empty state covers it)
+    const countEl = document.getElementById('result-count');
+    if (countEl && products.length > 0) {
+      countEl.textContent = tr('products.resultCount').replace('{count}', String(products.length));
     }
 
     // Render products
@@ -86,26 +109,34 @@
       if (products.length > 0) {
         grid.innerHTML = products.map(p => `
           <div class="product-card">
-            ${p.compare_price ? '<span class="badge sale">SALE</span>' : ''}
+            ${p.compare_price ? `<span class="badge sale">${esc(tr('home.product.sale'))}</span>` : ''}
             <div class="product-image">
-              <a href="/products/${p.slug}">
-                <img src="${p.primary_image}" alt="${p.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext x=%22150%22 y=%22150%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2216%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+              <a href="/products/${encodeURIComponent(p.slug)}">
+                <img src="${esc(p.primary_image)}" alt="${esc(p.name)}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E'">
               </a>
             </div>
             <div class="product-info">
-              <div class="product-name"><a href="/products/${p.slug}">${p.name}</a></div>
-              ${p.short_description ? `<div class="product-short-desc">${p.short_description}</div>` : ''}
+              <div class="product-name"><a href="/products/${encodeURIComponent(p.slug)}">${esc(p.name)}</a></div>
+              ${p.short_description ? `<div class="product-short-desc">${esc(p.short_description)}</div>` : ''}
               <div style="margin-bottom:12px;">
-                <span class="product-price">$${p.price.toFixed(2)}</span>
-                ${p.compare_price ? `<span class="compare-price">$${p.compare_price.toFixed(2)}</span>` : ''}
+                <span class="product-price">$${money(p.price)}</span>
+                ${p.compare_price ? `<span class="compare-price">$${money(p.compare_price)}</span>` : ''}
               </div>
-              <button class="btn-buy-now" onclick="buyNow(${p.id})">Buy Now - Proceed to Payment</button>
-              <button class="btn-add-cart" onclick="addToCart(${p.id})">Add to Cart</button>
+              <button class="btn-buy-now" onclick="buyNow(${p.id})">${esc(tr('home.product.buyNow'))}</button>
+              <button class="btn-add-cart" onclick="addToCart(${p.id})">${esc(tr('home.product.addToCart'))}</button>
             </div>
           </div>
         `).join('');
       } else {
-        grid.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:#999; padding:40px;">No products found.</p>';
+        // Empty state: distinguish "no products at all" from "filters matched nothing".
+        const filtered = Boolean(selectedCategory || searchQuery);
+        grid.innerHTML = `
+          <div style="grid-column:1/-1; text-align:center; padding:48px 20px;">
+            <p style="color:#666; font-size:16px; margin-bottom:8px;">${esc(tr('products.empty'))}</p>
+            <p style="color:#999; font-size:14px; margin-bottom:20px;">${esc(tr('products.emptyHint'))}</p>
+            ${filtered ? `<a href="/products" class="btn btn-outline">${esc(tr('products.clearFilters'))}</a>` : ''}
+          </div>
+        `;
       }
     }
 

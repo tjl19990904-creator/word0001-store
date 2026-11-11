@@ -3,10 +3,9 @@ const router = express.Router();
 const db = require('../db/init');
 const stripe = require('stripe');
 const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
 const cart = require('../lib/cart');
 const auth = require('../lib/auth');
+const renderPage = require('../lib/render');
 const { getStripeAccounts, getStripeAccount } = require('../lib/stripe-config');
 const {
   CURRENCY,
@@ -234,7 +233,9 @@ router.get('/success', auth.requireCustomerPage, async (req, res) => {
   const order = found && String(found.customer_id) === String(customer.id) ? found : null;
   if (orderNumber && !order) {
     return res.status(404).send(
-      '<h1>Order not found</h1><p>This order does not belong to your account.</p><p><a href="/account">Back to my account</a></p>'
+      '<h1>' + req.t('account.orderNotFound') + '</h1>' +
+      '<p>' + req.t('account.orderNotFoundHint') + '</p>' +
+      '<p><a href="' + req.localePrefix + '/account">' + req.t('account.backToAccount') + '</a></p>'
     );
   }
 
@@ -258,27 +259,13 @@ router.get('/success', auth.requireCustomerPage, async (req, res) => {
 });
 
 function renderSuccessPage(res, order, orderItems, isPaid) {
-  const settings = getSettings();
-  const templatePath = path.join(__dirname, '..', 'views', 'payment-success.html');
-  if (!fs.existsSync(templatePath)) return res.status(404).send('Payment result page is unavailable.');
-
-  let html = fs.readFileSync(templatePath, 'utf8');
-  html = html.replace(/\{\{settings\.(\w+)\}\}/g, (match, key) => settings[key] !== undefined ? String(settings[key]) : '');
-  html = html.replace(/\{\{data:json:(\w+)\}\}/g, (match, key) => {
-    const value = { order, orderItems }[key];
-    return JSON.stringify(value === undefined ? null : value).replace(/</g, '\\u003c');
-  });
-  html = html.replace(/\{\{data\.isPaid\}\}/g, isPaid ? 'true' : 'false');
-  return res.status(isPaid || !order ? 200 : 202).send(html);
+  // 202 keeps polling clients honest while the webhook catches up.
+  res.status(isPaid || !order ? 200 : 202);
+  return renderPage(res, 'payment-success.html', { order, orderItems, isPaid });
 }
 
 router.get('/cancel', (req, res) => {
-  const settings = getSettings();
-  const templatePath = path.join(__dirname, '..', 'views', 'payment-cancel.html');
-  if (!fs.existsSync(templatePath)) return res.redirect('/cart');
-  let html = fs.readFileSync(templatePath, 'utf8');
-  html = html.replace(/\{\{settings\.(\w+)\}\}/g, (match, key) => settings[key] !== undefined ? String(settings[key]) : '');
-  return res.send(html);
+  return renderPage(res, 'payment-cancel.html', {});
 });
 
 // Stripe webhook: verify signature against configured account secrets and apply idempotent updates.
