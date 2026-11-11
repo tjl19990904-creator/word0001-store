@@ -35,12 +35,12 @@ async function addToCart(productId, quantity = 1) {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.success) {
-      throw new Error(result.error || tr('addError', 'Unable to add this item to your cart. Please try again.'));
+      throw new Error(result.error || tr('cart.addError', 'Unable to add this item to your cart. Please try again.'));
     }
     updateCartCount();
-    showToast(tr('added', 'Added to cart!'), 'success');
+    showToast(tr('cart.added', 'Added to cart!'), 'success');
   } catch (error) {
-    showToast(error.message || tr('addError', 'Unable to add this item to your cart. Please try again.'), 'error');
+    showToast(error.message || tr('cart.addError', 'Unable to add this item to your cart. Please try again.'), 'error');
   }
 }
 
@@ -57,11 +57,11 @@ async function buyNow(productId, quantity = 1) {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.success) {
-      throw new Error(result.error || tr('checkoutError', 'Unable to prepare checkout for this item.'));
+      throw new Error(result.error || tr('cart.checkoutError', 'Unable to prepare checkout for this item.'));
     }
     window.location.assign('/checkout');
   } catch (error) {
-    showToast(error.message || tr('checkoutError', 'Unable to open checkout. Please try again.'), 'error');
+    showToast(error.message || tr('cart.checkoutError', 'Unable to open checkout. Please try again.'), 'error');
   }
 }
 
@@ -140,8 +140,8 @@ async function updateAccountNav() {
   link.className = 'account-link';
   link.href = session.loggedIn ? '/account' : '/account/login';
   link.textContent = session.loggedIn
-    ? ((session.customer && session.customer.firstName) || tr('myAccount', 'My account'))
-    : tr('signIn', 'Sign in');
+    ? ((session.customer && session.customer.firstName) || tr('nav.myAccount', 'My account'))
+    : tr('nav.signIn', 'Sign in');
   actions.insertBefore(link, actions.firstChild);
 }
 

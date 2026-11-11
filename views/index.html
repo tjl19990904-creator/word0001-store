@@ -94,11 +94,9 @@
     </div>
   </footer>
 
+  <script>window.I18N = {{data:json:clientDictionary}};</script>
   <script src="/js/store.js"></script>
   <script>
-    // Server-resolved copy for this locale, so client-rendered cards never fall
-    // back to hardcoded English.
-    window.I18N = {{data:json:clientStrings}};
     const products = {{data:json:products}};
     const grid = document.getElementById('product-grid');
 
@@ -115,7 +113,7 @@
       if (products.length > 0) {
         grid.innerHTML = products.map(p => `
           <div class="product-card">
-            ${p.compare_price ? `<span class="badge sale">${escapeHtml(window.I18N.sale)}</span>` : ''}
+            ${p.compare_price ? `<span class="badge sale">${escapeHtml(tr('home.product.sale'))}</span>` : ''}
             <div class="product-image">
               <a href="/products/${encodeURIComponent(p.slug)}">
                 <img src="${escapeHtml(p.primary_image)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E'">
@@ -128,13 +126,13 @@
                 <span class="product-price">$${money(p.price)}</span>
                 ${p.compare_price ? `<span class="compare-price">$${money(p.compare_price)}</span>` : ''}
               </div>
-              <button class="btn-buy-now" onclick="buyNow(${p.id})">${escapeHtml(window.I18N.buyNow)}</button>
-              <button class="btn-add-cart" onclick="addToCart(${p.id})">${escapeHtml(window.I18N.addToCart)}</button>
+              <button class="btn-buy-now" onclick="buyNow(${p.id})">${escapeHtml(tr('home.product.buyNow'))}</button>
+              <button class="btn-add-cart" onclick="addToCart(${p.id})">${escapeHtml(tr('home.product.addToCart'))}</button>
             </div>
           </div>
         `).join('');
       } else {
-        grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; color:#999; padding:40px;">${escapeHtml(window.I18N.empty)}</p>`;
+        grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; color:#999; padding:40px;">${escapeHtml(tr('home.featured.empty'))}</p>`;
       }
     }
   </script>

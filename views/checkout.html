@@ -1,81 +1,86 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Checkout - {{settings.store_name}}</title>
+  <title>{{t:checkout.title}} - {{settings.store_name}}</title>
+  <link rel="canonical" href="{{canonicalUrl}}">
+  <meta name="robots" content="noindex,follow">
+  <link rel="alternate" hreflang="en" href="{{altEnUrl}}">
+  <link rel="alternate" hreflang="zh-CN" href="{{altZhUrl}}">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div class="announcement-bar">{{settings.announcement_bar}}</div>
   <header class="header">
     <div class="header-inner">
-      <a href="/" class="logo">{{settings.store_name}}</a>
+      <a href="{{homeUrl}}" class="logo">{{settings.store_name}}</a>
       <nav><ul class="nav-menu">
-        <li><a href="/">Home</a></li>
-        <li><a href="/products">Products</a></li>
-        <li><a href="/track-order">Track Order</a></li>
-        <li><a href="/about">About</a></li>
-        <li><a href="/contact">Contact</a></li>
+        <li><a href="/">{{t:nav.home}}</a></li>
+        <li><a href="/products">{{t:nav.products}}</a></li>
+        <li><a href="/track-order">{{t:nav.trackOrder}}</a></li>
+        <li><a href="/about">{{t:nav.about}}</a></li>
+        <li><a href="/contact">{{t:nav.contact}}</a></li>
       </ul></nav>
       <div class="header-actions">
-        <a href="/cart" class="cart-link"><span>Cart</span><span class="cart-count" id="cart-count" style="display:none;">0</span></a>
+        <a href="/cart" class="cart-link"><span>{{t:nav.cart}}</span><span class="cart-count" id="cart-count" style="display:none;">0</span></a>
+        {{> lang-switcher}}
       </div>
     </div>
   </header>
 
   <div class="container checkout-page">
-    <h1>Checkout</h1>
+    <h1>{{t:checkout.title}}</h1>
     <div class="checkout-grid">
       <div class="checkout-form">
         <form id="checkout-form">
           <!-- Contact Info -->
           <div class="form-section">
-            <h3>Contact Information</h3>
+            <h3>{{t:checkout.contactInfo}}</h3>
             <div class="form-row">
               <div class="form-group">
-                <label>First Name *</label>
+                <label>{{t:field.firstName}}</label>
                 <input type="text" name="firstName" id="firstName" required>
               </div>
               <div class="form-group">
-                <label>Last Name *</label>
+                <label>{{t:field.lastName}}</label>
                 <input type="text" name="lastName" id="lastName" required>
               </div>
             </div>
             <div class="form-group">
-              <label>Email *</label>
+              <label>{{t:field.email}}</label>
               <input type="email" name="email" id="email" required>
             </div>
             <div class="form-group">
-              <label>Phone *</label>
+              <label>{{t:field.phone}}</label>
               <input type="tel" name="phone" id="phone" required>
             </div>
           </div>
 
           <!-- Shipping Address -->
           <div class="form-section">
-            <h3>Shipping Address</h3>
+            <h3>{{t:checkout.shippingAddress}}</h3>
             <div class="form-group">
-              <label>Street Address *</label>
+              <label>{{t:field.address}}</label>
               <input type="text" name="address" id="address" required>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>City *</label>
+                <label>{{t:field.city}}</label>
                 <input type="text" name="city" id="city" required>
               </div>
               <div class="form-group">
-                <label>State/Province *</label>
+                <label>{{t:field.state}}</label>
                 <input type="text" name="state" id="state" required>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>ZIP/Postal Code *</label>
+                <label>{{t:field.zip}}</label>
                 <input type="text" name="zip" id="zip" required>
               </div>
               <div class="form-group">
-                <label>Country *</label>
+                <label>{{t:field.country}}</label>
                 <input type="text" name="country" id="country" value="United States" required>
               </div>
             </div>
@@ -83,24 +88,24 @@
 
           <!-- Payment Method -->
           <div class="form-section">
-            <h3>Payment Method</h3>
+            <h3>{{t:checkout.paymentMethod}}</h3>
             <div class="payment-methods" id="payment-methods"></div>
           </div>
 
           <!-- Notes -->
           <div class="form-section">
-            <h3>Order Notes (Optional)</h3>
+            <h3>{{t:checkout.orderNotes}}</h3>
             <div class="form-group">
-              <textarea name="notes" id="notes" rows="3" placeholder="Any special instructions for your order..."></textarea>
+              <textarea name="notes" id="notes" rows="3" placeholder="{{t:checkout.notesPlaceholder}}"></textarea>
             </div>
           </div>
 
           <button type="submit" class="btn btn-primary btn-lg" id="place-order-btn" style="width:100%;">
-            Place Order
+            {{t:checkout.placeOrder}}
           </button>
           <div id="stripe-payment-box" style="display:none; margin-top:18px;">
             <div id="stripe-payment-element" style="padding:14px; border:1px solid #ddd; border-radius:6px;"></div>
-            <button type="button" class="btn btn-primary btn-lg" id="stripe-confirm-btn" style="width:100%; margin-top:12px;">Pay securely</button>
+            <button type="button" class="btn btn-primary btn-lg" id="stripe-confirm-btn" style="width:100%; margin-top:12px;">{{t:checkout.paySecurely}}</button>
           </div>
           <div id="payment-error" role="alert" style="color:#f44336; text-align:center; margin-top:12px; display:none;"></div>
         </form>
@@ -108,51 +113,60 @@
 
       <!-- Order Summary -->
       <div class="checkout-summary">
-        <h3>Order Summary</h3>
+        <h3>{{t:checkout.orderSummary}}</h3>
         <div id="summary-items"></div>
-        <div class="summary-row"><span>Subtotal</span><span>$${{data.subtotal}}</span></div>
-        <div class="summary-row"><span>Shipping</span><span id="shipping-cost"></span></div>
-        <div class="summary-row"><span>Tax</span><span>$${{data.tax}}</span></div>
-        <div class="summary-row summary-total"><span>Total</span><span>$${{data.total}}</span></div>
+        <div class="summary-row"><span>{{t:checkout.subtotal}}</span><span>$${{data.subtotal}}</span></div>
+        <div class="summary-row"><span>{{t:checkout.shipping}}</span><span id="shipping-cost"></span></div>
+        <div class="summary-row"><span>{{t:checkout.tax}}</span><span>$${{data.tax}}</span></div>
+        <div class="summary-row summary-total"><span>{{t:checkout.total}}</span><span>$${{data.total}}</span></div>
       </div>
     </div>
   </div>
 
   <footer class="footer"><div class="footer-bottom">{{settings.store_footer_text}}</div></footer>
+  <script>window.I18N = {{data:json:clientDictionary}};</script>
   <script src="/js/store.js"></script>
   <script>
     const cartItems = {{data:json:cartItems}};
     const paymentAccounts = {{data:json:paymentAccounts}};
     const shippingCost = {{data.shippingCost}};
+    // Hosted payment pages accept a short locale tag, not "zh-CN".
+    const paymentLocale = '{{lang}}'.indexOf('zh') === 0 ? 'zh' : 'en';
 
     let selectedPaymentAccount = null;
     let stripeState = null;
+
+    const esc = (value) => String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const money = (value) => Number(value || 0).toFixed(2);
 
     // Render summary items
     const sumEl = document.getElementById('summary-items');
     if (sumEl) {
       sumEl.innerHTML = cartItems.map(item => `
         <div class="summary-item">
-          <img src="${item.primary_image}" alt="${item.name}"
+          <img src="${esc(item.primary_image)}" alt="${esc(item.name)}"
                onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2250%22 height=%2250%22/%3E%3C/svg%3E'">
           <div class="info">
-            <div class="name">${item.name}</div>
-            <div class="qty">Qty: ${item.quantity}</div>
+            <div class="name">${esc(item.name)}</div>
+            <div class="qty">${esc(tr('checkout.qty'))}: ${item.quantity}</div>
           </div>
-          <div class="price">$${item.lineTotal.toFixed(2)}</div>
+          <div class="price">$${money(item.lineTotal)}</div>
         </div>
       `).join('');
     }
 
     // Shipping cost
     const shipEl = document.getElementById('shipping-cost');
-    if (shipEl) shipEl.textContent = shippingCost === 0 ? 'Free' : '$' + shippingCost.toFixed(2);
+    if (shipEl) shipEl.textContent = shippingCost === 0 ? tr('checkout.free') : '$' + money(shippingCost);
 
     // Render payment methods
     const payEl = document.getElementById('payment-methods');
     if (payEl) {
       if (paymentAccounts.length === 0) {
-        payEl.innerHTML = '<p style="color:#999; padding:12px;">No payment methods configured. Please contact us to complete your order.</p>';
+        payEl.innerHTML = `<p style="color:#999; padding:12px;">${esc(tr('checkout.noPaymentMethods'))}</p>`;
         document.getElementById('place-order-btn').disabled = true;
       } else {
         payEl.innerHTML = paymentAccounts.map((acc, i) => {
@@ -163,7 +177,7 @@
               <input type="radio" name="paymentAccountId" value="${acc.id}" id="pay-${acc.id}" ${i === 0 ? 'checked' : ''}>
               <label for="pay-${acc.id}" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                 ${icon}
-                <span>${label}</span>
+                <span>${esc(label)}</span>
               </label>
             </div>
           `;
@@ -191,20 +205,19 @@
     }
 
     function getPaymentLabel(type, name) {
-      const labels = {
-        'stripe': 'Stripe (Credit Card / Apple Pay / Google Pay)',
-        'airwallex': 'Airwallex (Credit Card / Apple Pay / Google Pay / Local Methods)',
-        'paypal': 'PayPal',
-        'bank': name + ' (Bank Transfer)',
-        'usdt': name + ' (USDT / Crypto)',
-        'wise': name + ' (Wise)',
-        'payoneer': name + ' (Payoneer)',
-        'cashapp': name + ' (Cash App)',
-        'alipay': name + ' (Alipay)',
-        'wechat': name + ' (WeChat Pay)',
-        'other': name
+      const suffixes = {
+        'bank': tr('checkout.suffixBank'),
+        'usdt': tr('checkout.suffixUsdt'),
+        'wise': tr('checkout.suffixWise'),
+        'payoneer': tr('checkout.suffixPayoneer'),
+        'cashapp': tr('checkout.suffixCashapp'),
+        'alipay': tr('checkout.suffixAlipay'),
+        'wechat': tr('checkout.suffixWechat')
       };
-      return labels[type] || name;
+      if (type === 'stripe') return tr('checkout.labelStripe');
+      if (type === 'airwallex') return tr('checkout.labelAirwallex');
+      if (type === 'paypal') return tr('checkout.labelPaypal');
+      return suffixes[type] ? name + suffixes[type] : name;
     }
 
     function selectPayment(el, accountId) {
@@ -225,10 +238,14 @@
 
       const onlineType = ['stripe', 'airwallex', 'cashapp'].includes(selectedPaymentAccount.type);
       const configured = Boolean(selectedPaymentAccount.is_configured);
-      const labels = { stripe: 'Pay with Stripe', airwallex: 'Pay with Airwallex', cashapp: 'Pay with Cash App' };
+      const labels = {
+        stripe: tr('checkout.payWithStripe'),
+        airwallex: tr('checkout.payWithAirwallex'),
+        cashapp: tr('checkout.payWithCashApp')
+      };
       btn.textContent = onlineType
-        ? (configured ? labels[selectedPaymentAccount.type] : `${selectedPaymentAccount.name} is not configured`)
-        : 'Place Order';
+        ? (configured ? labels[selectedPaymentAccount.type] : selectedPaymentAccount.name + tr('checkout.notConfiguredSuffix'))
+        : tr('checkout.placeOrder');
       btn.disabled = onlineType && !configured;
     }
 
@@ -243,7 +260,7 @@
         const script = document.createElement('script');
         script.src = 'https://static.airwallex.com/airwallex.js/1.5.0/airwallex.js';
         script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load Airwallex.js'));
+        script.onerror = () => reject(new Error(tr('checkout.errAirwallexSession')));
         document.head.appendChild(script);
       });
     }
@@ -253,8 +270,8 @@
         if (window.Stripe) return resolve();
         const script = document.createElement('script');
         script.src = 'https://js.stripe.com/v3/';
-        script.onload = () => window.Stripe ? resolve() : reject(new Error('Stripe.js did not initialize.'));
-        script.onerror = () => reject(new Error('Unable to load the secure Stripe payment form.'));
+        script.onload = () => window.Stripe ? resolve() : reject(new Error(tr('checkout.errStripeInit')));
+        script.onerror = () => reject(new Error(tr('checkout.errStripeLoad')));
         document.head.appendChild(script);
       });
     }
@@ -264,7 +281,7 @@
       const confirmBtn = document.getElementById('stripe-confirm-btn');
       const errorEl = document.getElementById('payment-error');
       confirmBtn.disabled = true;
-      confirmBtn.textContent = 'Confirming payment...';
+      confirmBtn.textContent = tr('cart.payConfirming');
       errorEl.style.display = 'none';
       try {
         const { error, paymentIntent } = await stripeState.stripe.confirmPayment({
@@ -274,14 +291,14 @@
           },
           redirect: 'if_required'
         });
-        if (error) throw new Error(error.message || 'Payment could not be completed.');
-        if (!paymentIntent) throw new Error('Stripe did not return a payment status. Please check your order before retrying.');
+        if (error) throw new Error(error.message || tr('checkout.errPaymentFailed'));
+        if (!paymentIntent) throw new Error(tr('cart.errNoStatus'));
         if (paymentIntent.status === 'processing') {
           window.location.href = `/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
           return;
         }
         if (paymentIntent.status !== 'succeeded') {
-          throw new Error('Payment is not complete yet. Please follow any verification prompt and try again.');
+          throw new Error(tr('cart.errIncomplete'));
         }
 
         const response = await fetch('/payment/stripe/confirm-payment', {
@@ -290,14 +307,14 @@
           body: JSON.stringify({ orderId: stripeState.orderId, paymentIntentId: paymentIntent.id })
         });
         const result = await response.json();
-        if (!response.ok || !result.success) throw new Error(result.error || 'Payment confirmation is delayed.');
+        if (!response.ok || !result.success) throw new Error(result.error || tr('checkout.errConfirmDelayed'));
         window.location.href = `/payment/success?order=${encodeURIComponent(result.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
       } catch (error) {
         console.error('Stripe confirmation error:', error);
-        errorEl.textContent = error.message || 'Payment failed. Please try again.';
+        errorEl.textContent = error.message || tr('checkout.errPaymentFailed');
         errorEl.style.display = 'block';
         confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Pay securely';
+        confirmBtn.textContent = tr('checkout.paySecurely');
       }
     }
 
@@ -306,13 +323,13 @@
     // Handle form submission
     document.getElementById('checkout-form').addEventListener('submit', async function(e) {
       e.preventDefault();
-      
+
       const errorEl = document.getElementById('payment-error');
       errorEl.style.display = 'none';
       errorEl.textContent = '';
 
       if (!selectedPaymentAccount) {
-        errorEl.textContent = 'Please select a payment method.';
+        errorEl.textContent = tr('checkout.errSelectPayment');
         errorEl.style.display = 'block';
         return;
       }
@@ -335,7 +352,7 @@
       const btn = document.getElementById('place-order-btn');
       const originalText = btn.textContent;
       btn.disabled = true;
-      btn.textContent = 'Processing...';
+      btn.textContent = tr('checkout.processing');
 
       try {
         const hasStripe = selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.is_configured;
@@ -343,13 +360,13 @@
         const hasCashApp = selectedPaymentAccount.type === 'cashapp' && selectedPaymentAccount.is_configured;
 
         if (selectedPaymentAccount.type === 'stripe' && !hasStripe) {
-          throw new Error('Stripe is not configured. Please contact the store administrator.');
+          throw new Error(tr('checkout.errStripeNotConfigured'));
         }
         if (selectedPaymentAccount.type === 'airwallex' && !hasAirwallex) {
-          throw new Error('Airwallex is not configured. Please contact the store administrator.');
+          throw new Error(tr('checkout.errAirwallexNotConfigured'));
         }
         if (selectedPaymentAccount.type === 'cashapp' && !hasCashApp) {
-          throw new Error('Cash App is not configured. Please contact the store administrator.');
+          throw new Error(tr('checkout.errCashAppNotConfigured'));
         }
 
         if (hasStripe) {
@@ -361,7 +378,7 @@
           });
           const result = await response.json();
           if (!response.ok || !result.success || !result.clientSecret || !result.publishableKey) {
-            throw new Error(result.error || 'Unable to start Stripe payment.');
+            throw new Error(result.error || tr('checkout.errStartStripe'));
           }
 
           const stripeClient = window.Stripe(result.publishableKey);
@@ -386,19 +403,19 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
           });
-          
+
           const result = await response.json();
-          
+
           if (result.success && result.clientSecret) {
             // Load Airwallex.js and redirect to hosted payment page
             if (!window.Airwallex) {
               await loadAirwallexJS();
             }
-            
+
             // Use Airwallex redirectToCheckout
             window.Airwallex.payments.redirectToCheckout({
               env: 'production',
-              locale: 'en',
+              locale: paymentLocale,
               origin: window.location.origin,
               clientSecret: result.clientSecret,
               successUrl: result.returnUrl,
@@ -407,7 +424,7 @@
               withShipping: false
             });
           } else {
-            throw new Error(result.error || 'Failed to create Airwallex payment session');
+            throw new Error(result.error || tr('checkout.errAirwallexSession'));
           }
         } else if (hasCashApp) {
           // Cash App Pay - create Square order, then initiate Cash App Pay
@@ -420,7 +437,7 @@
           const result = await response.json();
 
           if (!result.success) {
-            throw new Error(result.error || 'Failed to create Cash App payment');
+            throw new Error(result.error || tr('checkout.errCashAppCreate'));
           }
 
           // Load Square Web Payments SDK
@@ -433,7 +450,7 @@
                 script.src = 'https://web.squarecdn.com/v1/square.js';
               }
               script.onload = resolve;
-              script.onerror = () => reject(new Error('Failed to load Square SDK'));
+              script.onerror = () => reject(new Error(tr('checkout.errSquareLoad')));
               document.head.appendChild(script);
             });
           }
@@ -472,12 +489,12 @@
               // Redirect to success page
               window.location.href = '/payment/cashapp-success?order=' + result.orderNumber + '&square_order_id=' + result.squareOrderId;
             } else {
-              throw new Error(confirmResult.error || 'Cash App payment failed');
+              throw new Error(confirmResult.error || tr('checkout.errCashAppFailed'));
             }
           } else if (tokenResult.status === 'CANCEL') {
-            throw new Error('Cash App payment was cancelled');
+            throw new Error(tr('checkout.errCashAppCancelled'));
           } else {
-            throw new Error(tokenResult.errors ? tokenResult.errors[0].message : 'Cash App payment failed');
+            throw new Error(tokenResult.errors ? tokenResult.errors[0].message : tr('checkout.errCashAppFailed'));
           }
         } else {
           // Non-Stripe payment - place order directly (offline payment)
@@ -501,7 +518,7 @@
         }
       } catch (err) {
         console.error('Checkout error:', err);
-        errorEl.textContent = err.message || 'An error occurred. Please try again.';
+        errorEl.textContent = err.message || tr('checkout.errGeneric');
         errorEl.style.display = 'block';
         btn.disabled = false;
         btn.textContent = originalText;

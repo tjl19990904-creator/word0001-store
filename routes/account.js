@@ -1,45 +1,12 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const db = require('../db/init');
 const cart = require('../lib/cart');
 const auth = require('../lib/auth');
 const ps = require('../lib/payment-status');
+// Shared renderer: i18n placeholders, partial includes, settings overrides.
+const renderPage = require('../lib/render');
 
 const router = express.Router();
-
-function getSettings() {
-  return db.getAllSettings();
-}
-
-function renderPage(res, templateName, data = {}) {
-  const settings = getSettings();
-  const merged = { ...data, settings };
-  const templatePath = path.join(__dirname, '..', 'views', templateName);
-
-  if (!fs.existsSync(templatePath)) {
-    return res.status(404).send('Template not found: ' + templateName);
-  }
-
-  let html = fs.readFileSync(templatePath, 'utf8');
-  html = html.replace(/\{\{data:json:(\w+)\}\}/g, (match, key) => {
-    const val = merged[key];
-    return val !== undefined ? JSON.stringify(val) : 'null';
-  });
-  html = html.replace(/\{\{settings\.(\w+)\}\}/g, (match, key) => {
-    return settings[key] !== undefined ? String(settings[key]) : '';
-  });
-  html = html.replace(/\{\{data\.(\w+(?:\.\w+)*)\}\}/g, (match, key) => {
-    const parts = key.split('.');
-    let val = merged;
-    for (const part of parts) { val = val ? val[part] : undefined; }
-    return val !== undefined && val !== null ? String(val) : '';
-  });
-  html = html.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    return merged[key] !== undefined ? String(merged[key]) : '';
-  });
-  return res.send(html);
-}
 
 // ---------------------------------------------------------------------------
 // Login throttling (per IP + email) to slow down credential stuffing.
@@ -129,17 +96,17 @@ router.post('/login', async (req, res) => {
   });
 
   if (isThrottled(key)) {
-    return renderError('Too many sign-in attempts. Please wait a few minutes and try again.');
+    return renderError(req.t('account.errTooMany'));
   }
   if (!isValidEmail(email) || !password) {
     recordFailure(key);
-    return renderError('Please enter your email address and password.');
+    return renderError(req.t('account.errMissingCredentials'));
   }
 
   const customer = db.findOne('customers', { email });
   if (!customer || customer.status === 'disabled' || !auth.verifyPassword(password, customer.password_hash)) {
     recordFailure(key);
-    return renderError('Invalid email or password.');
+    return renderError(req.t('account.errInvalidCredentials'));
   }
 
   clearFailures(key);
@@ -183,11 +150,11 @@ router.post('/register', async (req, res) => {
     ...authFormView({ next, error: message, email, firstName, lastName, phone })
   });
 
-  if (!isValidEmail(email)) return renderError('Please enter a valid email address.');
-  if (password.length < 8) return renderError('Password must be at least 8 characters long.');
-  if (password !== confirm) return renderError('The two passwords do not match.');
+  if (!isValidEmail(email)) return renderError(req.t('account.errInvalidEmail'));
+  if (password.length < 8) return renderError(req.t('account.errPasswordShort'));
+  if (password !== confirm) return renderError(req.t('account.errPasswordMismatch'));
   if (db.findOne('customers', { email })) {
-    return renderError('An account with this email already exists. Please sign in instead.');
+    return renderError(req.t('account.errEmailExists'));
   }
 
   const result = db.insert('customers', {
@@ -251,7 +218,9 @@ router.get('/orders/:orderNumber', auth.requireCustomerPage, (req, res) => {
   // so the endpoint cannot be used to probe other customers' order numbers.
   if (!order || String(order.customer_id) !== String(customer.id)) {
     return res.status(404).send(
-      '<h1>Order not found</h1><p>This order does not belong to your account.</p><p><a href="/account">Back to my account</a></p>'
+      '<h1>' + req.t('account.orderNotFound') + '</h1>' +
+      '<p>' + req.t('account.orderNotFoundHint') + '</p>' +
+      '<p><a href="' + req.localePrefix + '/account">' + req.t('account.backToAccount') + '</a></p>'
     );
   }
 
@@ -267,7 +236,7 @@ router.get('/orders/:orderNumber', auth.requireCustomerPage, (req, res) => {
   }
 
   return renderPage(res, 'account-order.html', {
-    pageTitle: 'Order ' + order.order_number,
+    pageTitle: req.t('account.orderTitle') + ' ' + order.order_number,
     customer: auth.publicCustomer(customer),
     order,
     orderItems,
