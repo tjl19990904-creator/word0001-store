@@ -7,71 +7,17 @@ const fs = require('fs');
 const path = require('path');
 const cart = require('../lib/cart');
 const auth = require('../lib/auth');
-
-const CURRENCY = 'usd';
-
-function getStripeMode() {
-  if (process.env.STRIPE_MODE === 'test' || process.env.STRIPE_MODE === 'live') return process.env.STRIPE_MODE;
-  return process.env.NODE_ENV === 'production' ? 'live' : 'test';
-}
-
-function hasExpectedStripeKeys(config) {
-  const mode = getStripeMode();
-  const secretPrefix = mode === 'live' ? 'sk_live_' : 'sk_test_';
-  const publishablePrefix = mode === 'live' ? 'pk_live_' : 'pk_test_';
-  return Boolean(config.secret_key && config.secret_key.startsWith(secretPrefix) &&
-    config.publishable_key && config.publishable_key.startsWith(publishablePrefix));
-}
-
-function parseConfig(account) {
-  if (!account) return {};
-  let config = {};
-  if (typeof account.config === 'string') {
-    try { config = JSON.parse(account.config || '{}'); } catch { config = {}; }
-  } else if (account.config_data && typeof account.config_data === 'object') {
-    config = account.config_data;
-  }
-  if (account.type === 'stripe') {
-    config = {
-      ...config,
-      publishable_key: process.env.STRIPE_PUBLISHABLE_KEY || config.publishable_key || '',
-      secret_key: process.env.STRIPE_SECRET_KEY || config.secret_key || '',
-      webhook_secret: process.env.STRIPE_WEBHOOK_SECRET || config.webhook_secret || ''
-    };
-  }
-  return config;
-}
-
-function getStripeAccounts(includeInactive = false) {
-  // Keep the environment-managed Live Stripe default account available before
-  // any payment, confirmation or webhook lookup.
-  if (typeof db.ensureLiveStripeDefaultAccount === 'function') db.ensureLiveStripeDefaultAccount();
-  const accounts = db.findAll('payment_accounts');
-  return accounts.filter(account => {
-    if (account.type !== 'stripe' || (!includeInactive && account.status !== 'active')) return false;
-    const config = parseConfig(account);
-    if (!hasExpectedStripeKeys(config)) return false;
-    if (getStripeMode() === 'live' && !config.webhook_secret) return false;
-    return true;
-  }).map(account => ({ ...account, config_data: parseConfig(account) }));
-}
-
-function getStripeAccount(accountId, includeInactive = false) {
-  const accounts = getStripeAccounts(includeInactive);
-  if (accountId !== undefined && accountId !== null && accountId !== '') {
-    return accounts.find(account => String(account.id) === String(accountId)) || null;
-  }
-  return accounts[0] || null;
-}
+const { getStripeAccounts, getStripeAccount } = require('../lib/stripe-config');
+const {
+  CURRENCY,
+  recordPaymentFailure,
+  isPendingIntent,
+  validateIntentForOrder,
+  markOrderPaid
+} = require('../lib/payment-status');
 
 function getSettings() {
   return db.getAllSettings();
-}
-
-function moneyToCents(value) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount < 0) throw new Error('Invalid amount');
-  return Math.round((amount + Number.EPSILON) * 100);
 }
 
 // Price the signed-in customer's persisted cart. Nothing here is read from the
@@ -168,32 +114,6 @@ function removePendingOrder(orderId) {
   db.delete('orders', orderId);
 }
 
-function validateIntentForOrder(intent, order) {
-  return Boolean(order && intent && intent.status === 'succeeded' &&
-    intent.metadata && String(intent.metadata.order_id) === String(order.id) &&
-    String(intent.metadata.order_number) === String(order.order_number) &&
-    Number(intent.amount) === moneyToCents(order.total) &&
-    String(intent.currency).toLowerCase() === CURRENCY);
-}
-
-function markOrderPaid(order, intent) {
-  if (!validateIntentForOrder(intent, order)) return false;
-  if (order.payment_status !== 'paid') {
-    db.update('orders', order.id, {
-      payment_status: 'paid',
-      status: order.status === 'pending' ? 'processing' : order.status,
-      transaction_id: intent.id
-    });
-  }
-  return true;
-}
-
-function getBaseUrl(req) {
-  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, '');
-  if (process.env.NODE_ENV === 'production') return 'https://word0001.com';
-  return `${req.protocol}://${req.get('host')}`;
-}
-
 // Create a server-priced order and PaymentIntent for the signed-in customer.
 // The cart is loaded from the customer's own rows; the secret key never leaves the server.
 router.post('/stripe/create-payment-intent', auth.requireCustomerApi, async (req, res) => {
@@ -267,7 +187,31 @@ router.post('/stripe/confirm-payment', auth.requireCustomerApi, async (req, res)
     if (!intentId.startsWith('pi_')) return res.status(400).json({ success: false, error: 'Invalid payment reference.' });
 
     const intent = await stripe(stripeAccount.config_data.secret_key).paymentIntents.retrieve(intentId);
-    if (String(order.transaction_id) !== String(intent.id) || !validateIntentForOrder(intent, order)) {
+    if (String(order.transaction_id) !== String(intent.id)) {
+      return res.status(409).json({ success: false, error: 'Payment could not be verified.' });
+    }
+    if (!validateIntentForOrder(intent, order)) {
+      // Intermediate states (bank debit, 3DS) are not failures.
+      if (isPendingIntent(intent)) {
+        return res.status(202).json({
+          success: false,
+          processing: true,
+          error: 'Your payment is still being processed. Refresh your order status in a moment.'
+        });
+      }
+      // The intent exists but is not a successful payment for this order: keep the
+      // decline reason so the customer and the admin console can see what happened.
+      if (intent.status !== 'succeeded') {
+        const failed = recordPaymentFailure(order.id, intent, 'confirm');
+        const reason = (intent.last_payment_error && intent.last_payment_error.message) ||
+          'Your bank declined the payment. Please try another card.';
+        return res.status(402).json({
+          success: false,
+          error: reason,
+          declineCode: (failed && failed.payment_failure_decline_code) || '',
+          orderNumber: order.order_number
+        });
+      }
       return res.status(409).json({ success: false, error: 'Payment could not be verified.' });
     }
     markOrderPaid(order, intent);
@@ -389,9 +333,13 @@ router.post('/webhook', async (req, res) => {
             return res.status(400).send('Payment does not match the order.');
           }
         } else if (order.payment_status !== 'paid') {
-          db.update('orders', order.id, {
-            payment_status: event.type === 'payment_intent.payment_failed' ? 'failed' : 'cancelled'
-          });
+          if (event.type === 'payment_intent.payment_failed') {
+            // Persist the decline reason (code / decline_code / message) so the
+            // admin console can explain the failure instead of only showing "failed".
+            recordPaymentFailure(order.id, intent, 'webhook');
+          } else {
+            db.update('orders', order.id, { payment_status: 'cancelled' });
+          }
         }
       }
     }

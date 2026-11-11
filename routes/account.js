@@ -4,6 +4,7 @@ const path = require('path');
 const db = require('../db/init');
 const cart = require('../lib/cart');
 const auth = require('../lib/auth');
+const ps = require('../lib/payment-status');
 
 const router = express.Router();
 
@@ -257,12 +258,21 @@ router.get('/orders/:orderNumber', auth.requireCustomerPage, (req, res) => {
   const orderItems = db.findAll('order_items', { where: { order_id: order.id } });
   const shipment = db.findOne('shipments', { order_id: order.id });
 
+  // Unpaid orders get a tokenized retry link so the customer can finish payment
+  // without rebuilding the cart (which would create a duplicate order).
+  let payUrl = '';
+  if (ps.isPayable(order)) {
+    const { token } = ps.ensurePaymentToken(order, false);
+    payUrl = ps.getBaseUrl(req) + '/pay/' + token;
+  }
+
   return renderPage(res, 'account-order.html', {
     pageTitle: 'Order ' + order.order_number,
     customer: auth.publicCustomer(customer),
     order,
     orderItems,
-    shipment
+    shipment,
+    payUrl
   });
 });
 

@@ -23,6 +23,9 @@
         <div class="order-detail-grid">
           <!-- Left: Order Info -->
           <div>
+            <!-- Failed payment handling -->
+            <div id="payment-issue-card"></div>
+
             <!-- Order Status Update -->
             <div class="admin-card">
               <div class="admin-card-header"><h3>订单状态</h3></div>
@@ -77,6 +80,7 @@
     const shipment = {{data:json:shipment}};
     const trackingHistory = {{data:json:trackingHistory}};
     const paymentAccount = {{data:json:paymentAccount}};
+    const paymentLink = {{data:json:paymentLink}};
 
     // 状态翻译映射
     const statusMap = {
@@ -187,6 +191,175 @@
     } else {
       trackCard.style.display = 'none';
     }
+
+    // ===== 付款异常处理 =====
+    const noticeMap = {
+      marked_paid: ['已标记为已付款。', 'ok'],
+      cancelled: ['订单已取消。', 'ok'],
+      already_paid: ['该订单已经是已付款状态，无需重复操作。', 'warn'],
+      reference_required: ['请填写付款凭证号（银行流水号 / 交易号）后再标记已付款。', 'danger']
+    };
+    const query = new URLSearchParams(window.location.search);
+    const noticeKey = query.get('notice') || query.get('error');
+
+    function esc(v) {
+      return String(v === undefined || v === null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function paymentIssueCard() {
+      const host = document.getElementById('payment-issue-card');
+      if (!host) return;
+      if (order.payment_status === 'paid') { host.innerHTML = ''; return; }
+
+      const failed = order.payment_status === 'failed';
+      const stripeUrl = order.transaction_id && String(order.transaction_id).startsWith('pi_')
+        ? 'https://dashboard.stripe.com/payments/' + encodeURIComponent(order.transaction_id)
+        : '';
+
+      let html = '<div class="admin-card" style="border-left:4px solid ' + (failed ? '#d92d20' : '#f79009') + ';">';
+      html += '<div class="admin-card-header"><h3>付款异常处理</h3>';
+      html += '<span class="badge ' + (failed ? 'badge-danger' : 'badge-warning') + '">' + (failed ? '付款失败' : '未完成付款') + '</span></div>';
+
+      if (failed) {
+        html += '<div style="background:#fef3f2;border:1px solid #fecdca;border-radius:8px;padding:14px 16px;margin-bottom:14px;">';
+        html += '<div style="color:#b42318;font-weight:600;margin-bottom:6px;">' +
+          esc(order.payment_failure_message || '支付未完成（未记录具体原因，点击下方“同步 Stripe 状态”可获取）') + '</div>';
+        html += '<div style="font-size:13px;color:#7a271a;line-height:1.9;">';
+        if (order.payment_failure_decline_code || order.payment_failure_code) {
+          html += '错误代码：<strong>' + esc(order.payment_failure_decline_code || order.payment_failure_code) + '</strong><br>';
+        }
+        if (order.payment_failure_at) html += '失败时间：' + new Date(order.payment_failure_at).toLocaleString() + '<br>';
+        if (order.payment_attempts) html += '失败次数：' + esc(order.payment_attempts) + ' 次<br>';
+        html += '</div></div>';
+      } else {
+        html += '<p style="color:#667;margin-bottom:14px;">客户尚未完成付款。可生成支付链接发给客户，或先与客户确认。</p>';
+      }
+
+      html += '<div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;">';
+      html += '<button class="btn-admin btn-admin-primary btn-admin-sm" id="btn-gen-link">生成 / 刷新支付链接</button>';
+      if (stripeUrl) {
+        html += '<a class="btn-admin btn-admin-secondary btn-admin-sm" href="' + stripeUrl + '" target="_blank" rel="noopener">在 Stripe 查看</a>';
+      }
+      html += '</div>';
+
+      html += '<div id="link-box" style="display:none;margin-bottom:14px;">';
+      html += '<label style="font-size:13px;color:#475467;">把下面的链接发给客户，客户可直接用原订单付款（7 天有效）</label>';
+      html += '<div style="display:flex;gap:8px;margin-top:6px;">';
+      html += '<input id="link-input" readonly style="flex:1;padding:9px 10px;border:1px solid #d0d5dd;border-radius:6px;font-size:13px;">';
+      html += '<button class="btn-admin btn-admin-secondary btn-admin-sm" id="btn-copy-link">复制</button></div>';
+      html += '</div>';
+
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">';
+      html += '<button class="btn-admin btn-admin-secondary btn-admin-sm" id="btn-sync">同步 Stripe 状态</button>';
+      html += '<button class="btn-admin btn-admin-secondary btn-admin-sm" id="btn-manual">手动标记已付款</button>';
+      html += '<form method="POST" action="/admin/orders/' + order.id + '/payment/cancel" onsubmit="return confirm(\'确定取消该订单？\');" style="display:inline;">';
+      html += '<button type="submit" class="btn-admin btn-admin-danger btn-admin-sm">取消订单</button></form>';
+      html += '</div>';
+
+      html += '<div id="manual-box" style="display:none;border-top:1px solid #eaecf0;padding-top:14px;">';
+      html += '<form method="POST" action="/admin/orders/' + order.id + '/payment/mark-paid">';
+      html += '<div class="form-group"><label>付款凭证号（必填）</label>';
+      html += '<input name="reference" required placeholder="银行流水号 / 交易号 / 收款记录编号"></div>';
+      html += '<div class="form-group"><label>备注（选填）</label>';
+      html += '<input name="note" placeholder="例如：客户通过银行转账支付"></div>';
+      html += '<button type="submit" class="btn-admin btn-admin-primary btn-admin-sm">确认标记为已付款</button>';
+      html += '</form></div>';
+
+      html += '<div id="issue-msg" style="display:none;margin-top:10px;font-size:13px;"></div>';
+      html += '</div>';
+      host.innerHTML = html;
+
+      const msg = document.getElementById('issue-msg');
+      const showMsg = (text, color) => {
+        msg.textContent = text;
+        msg.style.display = 'block';
+        msg.style.color = color || '#475467';
+      };
+
+      document.getElementById('btn-gen-link').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-gen-link');
+        btn.disabled = true;
+        try {
+          const response = await fetch('/admin/orders/' + order.id + '/payment/link', {
+            method: 'POST', headers: { 'Accept': 'application/json' }
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.error || '生成失败');
+          document.getElementById('link-box').style.display = 'block';
+          document.getElementById('link-input').value = result.url;
+          showMsg('链接已生成，有效期至 ' + new Date(result.expiresAt).toLocaleString(), '#067647');
+        } catch (error) {
+          showMsg(error.message, '#b42318');
+        }
+        btn.disabled = false;
+      });
+
+      document.getElementById('btn-copy-link').addEventListener('click', async () => {
+        const input = document.getElementById('link-input');
+        try {
+          await navigator.clipboard.writeText(input.value);
+          showMsg('已复制到剪贴板', '#067647');
+        } catch (error) {
+          input.select();
+          document.execCommand('copy');
+          showMsg('已复制', '#067647');
+        }
+      });
+
+      document.getElementById('btn-sync').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-sync');
+        btn.disabled = true;
+        btn.textContent = '同步中...';
+        try {
+          const response = await fetch('/admin/orders/' + order.id + '/payment/sync', {
+            method: 'POST', headers: { 'Accept': 'application/json' }
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.error || '同步失败');
+          if (result.result === 'paid') { location.reload(); return; }
+          if (result.result === 'failed') {
+            showMsg('Stripe 状态：付款失败 — ' + (result.failureMessage || '') +
+              (result.declineCode ? ' (' + result.declineCode + ')' : ''), '#b42318');
+            setTimeout(() => location.reload(), 1500);
+          } else {
+            showMsg('Stripe 状态：' + (result.paymentStatus || result.result), '#475467');
+            setTimeout(() => location.reload(), 900);
+          }
+        } catch (error) {
+          showMsg(error.message, '#b42318');
+        }
+        btn.disabled = false;
+        btn.textContent = '同步 Stripe 状态';
+      });
+
+      document.getElementById('btn-manual').addEventListener('click', () => {
+        const box = document.getElementById('manual-box');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+      });
+
+      if (paymentLink) {
+        document.getElementById('link-box').style.display = 'block';
+        document.getElementById('link-input').value = paymentLink;
+      }
+    }
+
+    if (noticeKey && noticeMap[noticeKey]) {
+      const alertEl = document.createElement('div');
+      alertEl.textContent = noticeMap[noticeKey][0];
+      const kind = noticeMap[noticeKey][1];
+      alertEl.style.cssText = 'padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:14px;' +
+        (kind === 'danger'
+          ? 'background:#fef3f2;color:#b42318;border:1px solid #fecdca;'
+          : kind === 'warn'
+            ? 'background:#fffaeb;color:#b54708;border:1px solid #fedf89;'
+            : 'background:#ecfdf3;color:#067647;border:1px solid #abefc6;');
+      const content = document.querySelector('.admin-content');
+      if (content) content.prepend(alertEl);
+    }
+
+    paymentIssueCard();
   </script>
 </body>
 </html>

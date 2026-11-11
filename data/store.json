@@ -176,9 +176,64 @@
       "primary_image": "/uploads/products/sandalwood-mala-bracelet.webp"
     }
   ],
-  "customers": [],
-  "orders": [],
-  "order_items": [],
+  "customers": [
+    {
+      "id": 1,
+      "email": "oipy636@gmail.com",
+      "first_name": "John",
+      "last_name": "Publicover",
+      "phone": "5412 6524",
+      "password_hash": "$2a$10$7I9TKGCSoTml1SOc4DJ.TuAcvsHldXE..Dx/1CXZmQXH2RcDteLqC",
+      "status": "active",
+      "created_at": "2026-11-11T13:24:23.636Z",
+      "updated_at": "2026-11-11T13:24:23.636Z",
+      "migrated_from_live": true
+    }
+  ],
+  "orders": [
+    {
+      "id": 1,
+      "order_number": "ORD-1794403463636-ED78C8C0",
+      "customer_id": 1,
+      "customer_email": "oipy636@gmail.com",
+      "customer_phone": "5412 6524",
+      "customer_name": "John Publicover",
+      "shipping_address": "1554 roovel, Pinn, Yuhbw 8863, United States",
+      "shipping_city": "Pinn",
+      "shipping_state": "Yuhbw",
+      "shipping_zip": "8863",
+      "shipping_country": "United States",
+      "shipping_method": "Standard Shipping",
+      "shipping_cost": 0,
+      "subtotal": 188.88,
+      "tax": 0,
+      "total": 188.88,
+      "status": "pending",
+      "payment_status": "failed",
+      "payment_method": "stripe",
+      "payment_account_id": 2,
+      "notes": "",
+      "transaction_id": "pi_3UabVjR6wNKB5sbi27N2dJKf",
+      "created_at": "2026-11-11T13:24:23.636Z",
+      "updated_at": "2026-11-11T14:24:07.617Z",
+      "migrated_from_live": true,
+      "payment_token": "3bcc0bcac34bb41dadf96a8eaf7cc9dfb7a0f13f0ce66c66",
+      "payment_token_expires_at": "2026-11-18T14:24:07.616Z"
+    }
+  ],
+  "order_items": [
+    {
+      "id": 1,
+      "order_id": 1,
+      "product_id": 1,
+      "product_name": "Handmade Chinese Xun Pottery Flute 10 Holes",
+      "product_image": "/uploads/products/xun-pottery-flute.webp",
+      "price": 188.88,
+      "quantity": 1,
+      "total": 188.88,
+      "created_at": "2026-11-11T13:24:23.638Z"
+    }
+  ],
   "payment_accounts": [
     {
       "id": 1,
@@ -292,7 +347,27 @@
       "created_at": "2026-10-28T10:51:32.239Z"
     }
   ],
-  "shipments": [],
+  "shipments": [
+    {
+      "id": 1,
+      "order_id": 1,
+      "tracking_number": "",
+      "carrier": "",
+      "shipping_method": "Standard Shipping",
+      "status": "pending",
+      "estimated_delivery": null,
+      "shipped_at": null,
+      "delivered_at": null,
+      "shipping_address": "1554 roovel, Pinn, Yuhbw 8863, United States",
+      "shipping_cost": 0,
+      "notes": "",
+      "created_at": "2026-11-11T13:24:23.638Z",
+      "order_number": "ORD-1794403463636-ED78C8C0",
+      "customer_name": "John Publicover",
+      "customer_email": "oipy636@gmail.com",
+      "order_total": 188.88
+    }
+  ],
   "shipment_tracking": [],
   "settings": {
     "store_name": "Word0001 Store",
@@ -322,13 +397,14 @@
     "users": 1,
     "categories": 4,
     "products": 5,
-    "customers": 0,
-    "orders": 0,
-    "order_items": 0,
+    "customers": 1,
+    "orders": 1,
+    "order_items": 1,
     "payment_accounts": 6,
     "payment_events": 0,
     "withdrawal_accounts": 1,
-    "shipments": 0,
+    "shipments": 1,
     "shipment_tracking": 0
-  }
+  },
+  "cart_items": []
 }

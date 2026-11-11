@@ -36,6 +36,16 @@
     const order = {{data:json:order}};
     const orderItems = {{data:json:orderItems}};
     const shipment = {{data:json:shipment}};
+    const payUrl = {{data:json:payUrl}};
+
+    const payStatusLabels = {
+      unpaid: 'Not paid', pending: 'Awaiting payment', paid: 'Paid',
+      failed: 'Payment failed', refunded: 'Refunded', cancelled: 'Cancelled'
+    };
+    const statusLabels = {
+      pending: 'Pending', processing: 'Processing', shipped: 'Shipped',
+      delivered: 'Delivered', cancelled: 'Cancelled'
+    };
 
     function esc(value) {
       return String(value === undefined || value === null ? '' : value)
@@ -57,12 +67,28 @@
       let html = '<div style="background:#fff; border:1px solid #e6e6e6; border-radius:10px; padding:20px 22px; margin-bottom:20px;">';
       html += row('Order number', order.order_number);
       html += row('Placed on', order.created_at ? new Date(order.created_at).toLocaleString() : '');
-      html += row('Status', order.status);
-      html += row('Payment status', order.payment_status);
+      html += row('Status', statusLabels[order.status] || order.status);
+      html += row('Payment status', payStatusLabels[order.payment_status] || order.payment_status);
       html += row('Payment method', order.payment_method || '');
       html += row('Ship to', order.shipping_address || '');
       html += row('Total', '$' + Number(order.total || 0).toFixed(2));
       html += '</div>';
+
+      if (order.payment_status === 'failed' && order.status !== 'cancelled') {
+        html += '<div style="background:#fef3f2; border:1px solid #fecdca; color:#b42318; border-radius:10px; padding:16px 18px; margin-bottom:20px; font-size:14px;">' +
+          '<strong>Your payment did not go through.</strong><br>' +
+          esc(order.payment_failure_message || 'Your bank declined the payment.') +
+          (order.payment_failure_decline_code ? ' (code: ' + esc(order.payment_failure_decline_code) + ')' : '') +
+          '<br><span style="color:#7a271a;">You can retry with the same order — no need to add the items again.</span>' +
+          '</div>';
+      }
+
+      if (payUrl && order.payment_status !== 'paid' && order.status !== 'cancelled') {
+        html += '<div style="margin-bottom:20px;">' +
+          '<a class="btn btn-primary" style="padding:12px 22px; font-size:15px;" href="' + esc(payUrl) + '">Pay now — $' +
+          Number(order.total || 0).toFixed(2) + '</a>' +
+          '</div>';
+      }
 
       html += '<div style="background:#fff; border:1px solid #e6e6e6; border-radius:10px; padding:20px 22px; margin-bottom:20px;">';
       html += '<h3 style="margin-bottom:12px;">Items</h3>';

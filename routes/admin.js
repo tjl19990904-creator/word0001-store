@@ -5,6 +5,9 @@ const db = require('../db/init');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
+const stripe = require('stripe');
+const { getStripeAccount } = require('../lib/stripe-config');
+const ps = require('../lib/payment-status');
 
 // ===== Auth Middleware =====
 function requireAuth(req, res, next) {
@@ -285,12 +288,16 @@ router.get('/orders', requireAuth, (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const perPage = 20;
   const status = req.query.status;
+  const paymentStatus = req.query.payment_status;
   const search = req.query.search;
 
   let orders = db.findAll('orders');
   
   if (status && status !== 'all') {
     orders = orders.filter(o => o.status === status);
+  }
+  if (paymentStatus && paymentStatus !== 'all') {
+    orders = orders.filter(o => o.payment_status === paymentStatus);
   }
   if (search) {
     const s = search.toLowerCase();
@@ -310,6 +317,7 @@ router.get('/orders', requireAuth, (req, res) => {
 
   renderAdmin(res, 'orders.html', { 
     orders, currentPage: page, totalPages, status: status || 'all', search: search || '',
+    paymentStatus: paymentStatus || 'all',
     pageTitle: 'Orders', sessionUserId: req.session.userId 
   });
 });
@@ -329,8 +337,14 @@ router.get('/orders/:id', requireAuth, (req, res) => {
   }
   const paymentAccount = order.payment_account_id ? db.findOne('payment_accounts', { id: order.payment_account_id }) : null;
 
+  // Existing retry link, if one was already generated and is still valid.
+  let paymentLink = '';
+  if (order.payment_method === 'stripe' && ps.isPayable(order) && ps.isTokenValid(order)) {
+    paymentLink = ps.getBaseUrl(req) + '/pay/' + order.payment_token;
+  }
+
   renderAdmin(res, 'order-detail.html', { 
-    order, orderItems, shipment, trackingHistory, paymentAccount,
+    order, orderItems, shipment, trackingHistory, paymentAccount, paymentLink,
     pageTitle: 'Order #' + order.order_number, sessionUserId: req.session.userId 
   });
 });
@@ -345,6 +359,115 @@ router.post('/orders/:id/status', requireAuth, (req, res) => {
   
   db.update('orders', parseInt(req.params.id), updateData);
   res.redirect('/admin/orders/' + req.params.id);
+});
+
+// ===== Failed payment handling =====
+
+// Reconcile an order with Stripe. Fixes orders whose webhook never arrived and
+// fills in the decline reason for failures that happened before it was recorded.
+router.post('/orders/:id/payment/sync', requireAuth, async (req, res) => {
+  const order = db.findOne('orders', { id: parseInt(req.params.id) });
+  if (!order) return res.status(404).json({ success: false, error: 'Order not found.' });
+  if (order.payment_method !== 'stripe' || !order.transaction_id) {
+    return res.status(400).json({ success: false, error: 'This order has no Stripe payment to sync.' });
+  }
+
+  const account = getStripeAccount(order.payment_account_id, true) || getStripeAccount(order.payment_account_id, false);
+  if (!account) return res.status(503).json({ success: false, error: 'Stripe account is unavailable.' });
+
+  try {
+    const intent = await stripe(account.config_data.secret_key).paymentIntents.retrieve(order.transaction_id);
+    let result = 'unchanged';
+
+    if (intent.status === 'succeeded') {
+      if (!ps.markOrderPaid(order, intent)) {
+        return res.status(409).json({ success: false, error: 'Stripe reports success but the amount does not match this order.' });
+      }
+      result = 'paid';
+    } else if (intent.status === 'processing' || intent.status === 'requires_action' || intent.status === 'requires_confirmation') {
+      db.update('orders', order.id, { payment_status: 'pending' });
+      result = 'pending';
+    } else if (intent.status === 'canceled') {
+      db.update('orders', order.id, { payment_status: 'cancelled' });
+      result = 'cancelled';
+    } else {
+      ps.recordPaymentFailure(order.id, intent, 'admin-sync');
+      result = 'failed';
+    }
+
+    const updated = db.findOne('orders', { id: order.id });
+    return res.json({
+      success: true,
+      result,
+      paymentStatus: updated.payment_status,
+      failureCode: updated.payment_failure_code || '',
+      declineCode: updated.payment_failure_decline_code || '',
+      failureMessage: updated.payment_failure_message || ''
+    });
+  } catch (error) {
+    console.error('Admin Stripe sync failed:', error.message);
+    return res.status(502).json({ success: false, error: 'Could not reach Stripe. Check the payment in the Stripe Dashboard.' });
+  }
+});
+
+// Generate (or refresh) a tokenized retry-payment link for this order.
+router.post('/orders/:id/payment/link', requireAuth, (req, res) => {
+  const order = db.findOne('orders', { id: parseInt(req.params.id) });
+  if (!order) return res.status(404).json({ success: false, error: 'Order not found.' });
+  if (!ps.isPayable(order)) {
+    return res.status(409).json({ success: false, error: 'This order is already paid or cancelled.' });
+  }
+
+  const { token, expiresAt } = ps.ensurePaymentToken(order, true);
+  return res.json({
+    success: true,
+    url: ps.getBaseUrl(req) + '/pay/' + token,
+    expiresAt
+  });
+});
+
+// Manually settle an order that was paid outside Stripe (bank transfer, Cash App
+// on another device, etc.). A reference is mandatory so the record is auditable.
+router.post('/orders/:id/payment/mark-paid', requireAuth, (req, res) => {
+  const order = db.findOne('orders', { id: parseInt(req.params.id) });
+  if (!order) return res.redirect('/admin/orders');
+
+  const reference = String(req.body.reference || '').trim().slice(0, 160);
+  const note = String(req.body.note || '').trim().slice(0, 500);
+  if (!reference) {
+    return res.redirect('/admin/orders/' + order.id + '?error=reference_required');
+  }
+  if (order.payment_status === 'paid') {
+    return res.redirect('/admin/orders/' + order.id + '?notice=already_paid');
+  }
+
+  db.update('orders', order.id, {
+    payment_status: 'paid',
+    status: order.status === 'pending' ? 'processing' : order.status,
+    manual_payment: 1,
+    manual_payment_reference: reference,
+    manual_payment_note: note,
+    manual_payment_at: new Date().toISOString(),
+    paid_at: new Date().toISOString(),
+    payment_failure_code: '',
+    payment_failure_decline_code: '',
+    payment_failure_message: '',
+    payment_failure_type: '',
+    payment_failure_at: null,
+    payment_failure_source: ''
+  });
+  return res.redirect('/admin/orders/' + order.id + '?notice=marked_paid');
+});
+
+// Cancel an unpaid order in one click.
+router.post('/orders/:id/payment/cancel', requireAuth, (req, res) => {
+  const order = db.findOne('orders', { id: parseInt(req.params.id) });
+  if (!order) return res.redirect('/admin/orders');
+  if (order.payment_status === 'paid') {
+    return res.redirect('/admin/orders/' + order.id + '?error=already_paid');
+  }
+  db.update('orders', order.id, { status: 'cancelled', payment_status: 'cancelled' });
+  return res.redirect('/admin/orders/' + order.id + '?notice=cancelled');
 });
 
 // ===== Payment Accounts Management (收款账户) =====

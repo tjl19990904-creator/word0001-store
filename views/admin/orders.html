@@ -32,6 +32,14 @@
                 <option value="delivered">已送达</option>
                 <option value="cancelled">已取消</option>
               </select>
+              <select name="payment_status" id="payment-filter" onchange="this.form.submit()">
+                <option value="all">全部付款状态</option>
+                <option value="unpaid">未付款</option>
+                <option value="pending">待付款</option>
+                <option value="paid">已付款</option>
+                <option value="failed">付款失败</option>
+                <option value="refunded">已退款</option>
+              </select>
               <button type="submit" class="btn-admin btn-admin-secondary btn-admin-sm">搜索</button>
             </form>
             <a href="/admin/orders" class="btn-admin btn-admin-secondary btn-admin-sm">重置</a>
@@ -61,6 +69,7 @@
     const totalPages = {{data.totalPages}};
     const search = "{{data.search}}";
     const statusFilter = "{{data.status}}";
+    const paymentFilter = "{{data.paymentStatus}}";
 
     // 状态翻译映射
     const statusMap = {
@@ -82,6 +91,9 @@
     document.querySelectorAll('select[name="status"] option').forEach(opt => {
       opt.selected = opt.value === statusFilter;
     });
+    document.querySelectorAll('select[name="payment_status"] option').forEach(opt => {
+      opt.selected = opt.value === paymentFilter;
+    });
 
     const tbody = document.getElementById('orders-table');
     if (orders.length === 0) {
@@ -94,7 +106,7 @@
           <td>${new Date(o.created_at).toLocaleDateString()}</td>
           <td>$${o.total.toFixed(2)}</td>
           <td><span class="badge ${o.status === 'delivered' ? 'badge-success' : o.status === 'shipped' ? 'badge-info' : o.status === 'cancelled' ? 'badge-danger' : 'badge-warning'}">${statusMap[o.status] || o.status}</span></td>
-          <td><span class="badge ${o.payment_status === 'paid' ? 'badge-success' : o.payment_status === 'refunded' ? 'badge-danger' : 'badge-secondary'}">${payStatusMap[o.payment_status] || o.payment_status}</span></td>
+          <td><span class="badge ${o.payment_status === 'paid' ? 'badge-success' : o.payment_status === 'failed' ? 'badge-danger' : o.payment_status === 'refunded' ? 'badge-danger' : 'badge-secondary'}">${payStatusMap[o.payment_status] || o.payment_status}</span></td>
           <td><a href="/admin/orders/${o.id}" class="action-btn">查看</a></td>
         </tr>
       `).join('');
