@@ -59,8 +59,11 @@
     "total": "合计",
     "free": "免运费",
     "completeTitle": "在购物车中完成支付",
-    "completeIntro": "填写联系电话即可用信用卡安全支付，无需其他信息。",
-    "contactInfo": "联系信息",
+    "completeIntro": "填写姓名与收货地址即可用信用卡安全支付。",
+    "shippingInfo": "收货信息",
+    "nameLabel": "姓名 *",
+    "addressLabel": "收货地址 *",
+    "addressPlaceholder": "请填写街道、城市、省/州、邮编及国家/地区",
     "paymentMethod": "支付方式",
     "orderNotes": "订单备注（选填）",
     "notesPlaceholder": "如有特殊要求，请在此说明…",
@@ -82,12 +85,14 @@
     "errConfirmDelayed": "支付确认有所延迟。",
     "errFailed": "支付失败，请重试。",
     "errStripeLoad": "无法加载 Stripe 安全支付表单。",
-    "errStripeInit": "Stripe.js 初始化失败。",
-    "contactPhone": "联系电话 *"
+    "errStripeInit": "Stripe.js 初始化失败。"
   },
   "checkout": {
     "title": "结账",
-    "contactInfo": "联系信息",
+    "shippingInfo": "收货信息",
+    "nameLabel": "姓名 *",
+    "addressLabel": "收货地址 *",
+    "addressPlaceholder": "请填写街道、城市、省/州、邮编及国家/地区",
     "paymentMethod": "支付方式",
     "orderNotes": "订单备注（选填）",
     "notesPlaceholder": "如有特殊要求，请在此说明…",
@@ -131,10 +136,8 @@
     "errSquareLoad": "无法加载 Square SDK",
     "errStripeLoad": "无法加载 Stripe 安全支付表单。",
     "errStripeInit": "Stripe.js 初始化失败。",
-    "contactPhone": "联系电话 *",
-    "subtitle": "填写联系电话即可安全支付。",
-    "errPhoneRequired": "请填写联系电话。",
-    "errPhoneInvalid": "请输入有效的电话号码。",
+    "errNameRequired": "请填写姓名。",
+    "errAddressRequired": "请填写收货地址。",
     "errEmailInvalid": "请输入有效的邮箱地址。"
   },
   "account": {
@@ -375,8 +378,7 @@
     "continueShopping": "继续购物",
     "totalBefore": "订单合计为 ",
     "received": "我们已收到您的订单，将尽快处理。",
-    "contactWithPhone": "我们会通过电话 {phone} 与您联系，确认发货信息。",
-    "contactNoPhone": "我们会尽快与您联系，确认发货信息。",
+    "shippingInfoSaved": "姓名与收货地址已保存，我们将按您填写的地址发货。",
     "saveOrder": "请保存好订单号，便于后续查询。"
   }
 }

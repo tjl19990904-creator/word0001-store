@@ -147,15 +147,14 @@ router.post('/create-payment-intent', auth.requireCustomerApi, async (req, res) 
 
     // Create order record
     const orderNumber = 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-    const { email, phone, firstName, lastName, address, city, state, zip, country, notes } = req.body;
-    const customerName = `${firstName || ''} ${lastName || ''}`.trim();
+    const { name, email, firstName, lastName, address, city, state, zip, country, notes } = req.body;
+    const customerName = String(name || '').trim().slice(0, 200) || `${firstName || ''} ${lastName || ''}`.trim();
     const shippingAddress = `${address || ''}, ${city || ''}, ${state || ''} ${zip || ''}, ${country || 'United States'}`;
 
     const orderResult = db.insert('orders', {
       order_number: orderNumber,
       customer_id: customer.id,
       customer_email: customer.email || email || '',
-      customer_phone: phone || '',
       customer_name: customerName,
       shipping_address: shippingAddress,
       shipping_city: city || '',

@@ -366,13 +366,17 @@ router.post('/checkout/place-order', (req, res) => {
     return res.redirect('/cart');
   }
 
-  const { email, phone, firstName, lastName, address, city, state, zip, country, paymentMethod, paymentAccountId, notes } = req.body;
-  const customer = sessionCustomer || (email ? auth.findOrCreateCustomer({ email, firstName, lastName, phone }) : null);
+  const { name, email, firstName, lastName, address, city, state, zip, country, paymentMethod, paymentAccountId, notes } = req.body;
+  const recipientName = String(name || '').trim().slice(0, 200);
+  if (!recipientName) return res.status(400).send(req.t('checkout.errNameRequired'));
+  if (!String(address || '').trim()) return res.status(400).send(req.t('checkout.errAddressRequired'));
+
+  const customer = sessionCustomer || (email ? auth.findOrCreateCustomer({ email, firstName, lastName }) : null);
   const settings = getSettings();
   const pricing = cart.price(items, settings);
 
   const orderNumber = 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-  const customerName = `${firstName || ''} ${lastName || ''}`.trim();
+  const customerName = recipientName || `${firstName || ''} ${lastName || ''}`.trim();
   const addressParts = [
     address,
     [city, state].filter(Boolean).join(' '),
@@ -392,7 +396,6 @@ router.post('/checkout/place-order', (req, res) => {
     order_number: orderNumber,
     customer_id: customer ? customer.id : null,
     customer_email: (customer && customer.email) || email || '',
-    customer_phone: phone,
     customer_name: customerName,
     shipping_address: shippingAddress,
     shipping_city: city || '',
@@ -451,12 +454,8 @@ router.post('/checkout/place-order', (req, res) => {
     orderId,
     total: (pricing.totalCents / 100).toFixed(2),
     email: (customer && customer.email) || email || '',
-    phone: phone || '',
-    // No email is collected any more, so the confirmation explains how the
-    // store will follow up instead of promising a receipt email.
-    contactLine: phone
-      ? req.t('orderConfirm.contactWithPhone', { phone })
-      : req.t('orderConfirm.contactNoPhone'),
+    // Static copy only: never interpolate customer-supplied text into HTML.
+    contactLine: req.t('orderConfirm.shippingInfoSaved'),
     pageTitle: req.t('orderConfirm.title')
   });
 });

@@ -112,8 +112,9 @@
           <div class="checkout-grid">
             <form id="cart-payment-form" class="checkout-form" novalidate>
               <div class="form-section">
-                <h3>${esc(tr('cart.contactInfo'))}</h3>
-                <div class="form-group"><label for="cart-phone">${esc(tr('cart.contactPhone'))}</label><input type="tel" id="cart-phone" name="phone" autocomplete="tel" required></div>
+                <h3>${esc(tr('cart.shippingInfo'))}</h3>
+                <div class="form-group"><label for="cart-name">${esc(tr('cart.nameLabel'))}</label><input type="text" id="cart-name" name="name" autocomplete="name" required></div>
+                <div class="form-group"><label for="cart-address">${esc(tr('cart.addressLabel'))}</label><textarea id="cart-address" name="address" rows="3" placeholder="${esc(tr('cart.addressPlaceholder'))}" required></textarea></div>
               </div>
               <div class="form-section">
                 <h3>${esc(tr('cart.paymentMethod'))}</h3>

@@ -59,8 +59,11 @@
     "total": "Total",
     "free": "Free",
     "completeTitle": "Complete payment in your cart",
-    "completeIntro": "Enter a phone number and pay securely by card — nothing else needed.",
-    "contactInfo": "Contact Information",
+    "completeIntro": "Enter your name and shipping address to pay securely by card.",
+    "shippingInfo": "Shipping Information",
+    "nameLabel": "Name *",
+    "addressLabel": "Shipping Address *",
+    "addressPlaceholder": "Street, city, state/province, postal code, country",
     "paymentMethod": "Payment Method",
     "orderNotes": "Order Notes (Optional)",
     "notesPlaceholder": "Any special instructions for your order...",
@@ -82,12 +85,14 @@
     "errConfirmDelayed": "Payment confirmation is delayed.",
     "errFailed": "Payment failed. Please try again.",
     "errStripeLoad": "Unable to load the secure Stripe payment form.",
-    "errStripeInit": "Stripe.js did not initialize.",
-    "contactPhone": "Contact phone *"
+    "errStripeInit": "Stripe.js did not initialize."
   },
   "checkout": {
     "title": "Checkout",
-    "contactInfo": "Contact Information",
+    "shippingInfo": "Shipping Information",
+    "nameLabel": "Name *",
+    "addressLabel": "Shipping Address *",
+    "addressPlaceholder": "Street, city, state/province, postal code, country",
     "paymentMethod": "Payment Method",
     "orderNotes": "Order Notes (Optional)",
     "notesPlaceholder": "Any special instructions for your order...",
@@ -131,10 +136,8 @@
     "errSquareLoad": "Failed to load Square SDK",
     "errStripeLoad": "Unable to load the secure Stripe payment form.",
     "errStripeInit": "Stripe.js did not initialize.",
-    "contactPhone": "Contact phone *",
-    "subtitle": "Enter a phone number and pay securely.",
-    "errPhoneRequired": "A contact phone number is required.",
-    "errPhoneInvalid": "Please enter a valid phone number.",
+    "errNameRequired": "Please enter a recipient name.",
+    "errAddressRequired": "Please enter a shipping address.",
     "errEmailInvalid": "Please enter a valid email address."
   },
   "account": {
@@ -375,8 +378,7 @@
     "continueShopping": "Continue Shopping",
     "totalBefore": "Your order total is ",
     "received": "We've received your order and will process it shortly.",
-    "contactWithPhone": "We'll contact you at {phone} to confirm delivery details.",
-    "contactNoPhone": "We'll be in touch shortly to confirm delivery details.",
+    "shippingInfoSaved": "Your name and shipping address have been saved. We'll ship to the address you provided.",
     "saveOrder": "Keep your order number handy in case you need to check on it."
   }
 }

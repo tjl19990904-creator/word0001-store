@@ -47,20 +47,18 @@ function badRequest(message) {
   return error;
 }
 
-// Minimal checkout: only a contact phone is required. Name, email and address
-// are optional because the storefront no longer asks for them.
+// The checkout form collects a recipient name and a shipping address. The
+// order is priced from the server-side cart; no phone number is collected.
 function validateCheckoutDetails(body, t) {
   const tr = typeof t === 'function' ? t : (key, fallback) => fallback;
   const details = {};
-  for (const key of ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'state', 'zip', 'country']) {
+  for (const key of ['name', 'firstName', 'lastName', 'email', 'address', 'city', 'state', 'zip', 'country']) {
     details[key] = String(body[key] || '').trim().slice(0, 200);
   }
   details.notes = String(body.notes || '').trim().slice(0, 2000);
 
-  if (!details.phone) throw badRequest(tr('checkout.errPhoneRequired', 'A contact phone number is required.'));
-  if (details.phone.replace(/\D/g, '').length < 6) {
-    throw badRequest(tr('checkout.errPhoneInvalid', 'Please enter a valid phone number.'));
-  }
+  if (!details.name) throw badRequest(tr('checkout.errNameRequired', 'Please enter a recipient name.'));
+  if (!details.address) throw badRequest(tr('checkout.errAddressRequired', 'Please enter a shipping address.'));
   if (details.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) {
     throw badRequest(tr('checkout.errEmailInvalid', 'Please enter a valid email address.'));
   }
@@ -78,13 +76,12 @@ function formatAddress(details) {
 
 function createOrder(details, pricing, stripeAccount, customer) {
   const orderNumber = `ORD-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-  const customerName = `${details.firstName || ''} ${details.lastName || ''}`.trim();
+  const customerName = details.name || `${details.firstName || ''} ${details.lastName || ''}`.trim();
   const shippingAddress = formatAddress(details);
   const orderResult = db.insert('orders', {
     order_number: orderNumber,
     customer_id: customer ? customer.id : null,
     customer_email: details.email || (customer && customer.email) || '',
-    customer_phone: details.phone,
     customer_name: customerName,
     shipping_address: shippingAddress,
     shipping_city: details.city,
@@ -167,8 +164,7 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
       ? auth.findOrCreateCustomer({
         email: details.email,
         firstName: details.firstName,
-        lastName: details.lastName,
-        phone: details.phone
+        lastName: details.lastName
       })
       : null);
 
