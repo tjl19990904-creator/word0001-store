@@ -115,7 +115,7 @@
     document.getElementById('order-summary').innerHTML = `
       <div style="margin-bottom:12px;"><strong>订单编号：</strong><br>${order.order_number}</div>
       <div style="margin-bottom:12px;"><strong>下单时间：</strong><br>${new Date(order.created_at).toLocaleString()}</div>
-      <div style="margin-bottom:12px;"><strong>客户信息：</strong><br>${order.customer_name}<br>${order.customer_email}<br>${order.customer_phone || ''}</div>
+      <div style="margin-bottom:12px;"><strong>客户信息：</strong><br>${order.customer_name || '—'}<br>${order.customer_email || '—'}<br>联系电话：${order.customer_phone || '—'}</div>
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0;">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span>商品小计：</span><span>$${order.subtotal.toFixed(2)}</span></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span>运费：</span><span>$${order.shipping_cost.toFixed(2)}</span></div>
@@ -145,7 +145,7 @@
 
     // Shipping info
     document.getElementById('shipping-info').innerHTML = `
-      <div style="margin-bottom:8px;"><strong>收件人：</strong><br>${order.shipping_address}</div>
+      <div style="margin-bottom:8px;"><strong>收件人：</strong><br>${order.shipping_address || '—'}</div>
       <div style="margin-bottom:8px;"><strong>城市：</strong> ${order.shipping_city}</div>
       <div style="margin-bottom:8px;"><strong>省份/州：</strong> ${order.shipping_state}</div>
       <div style="margin-bottom:8px;"><strong>邮编：</strong> ${order.shipping_zip}</div>

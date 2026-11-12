@@ -356,7 +356,7 @@ router.get('/checkout', (req, res) => {
 
 // Place an offline/unpaid order. The line items are rebuilt from the cart on the
 // server; any product or amount supplied by the browser is ignored. Guests can
-// order too: the customer record is created from the checkout email.
+// order too; a customer record is only created when an email was given.
 router.post('/checkout/place-order', (req, res) => {
   const sessionCustomer = auth.getCustomer(req);
   const { items } = sessionCustomer
@@ -367,16 +367,19 @@ router.post('/checkout/place-order', (req, res) => {
   }
 
   const { email, phone, firstName, lastName, address, city, state, zip, country, paymentMethod, paymentAccountId, notes } = req.body;
-  const customer = sessionCustomer || auth.findOrCreateCustomer({ email, firstName, lastName, phone });
-  if (!customer) {
-    return res.redirect('/cart');
-  }
+  const customer = sessionCustomer || (email ? auth.findOrCreateCustomer({ email, firstName, lastName, phone }) : null);
   const settings = getSettings();
   const pricing = cart.price(items, settings);
 
   const orderNumber = 'ORD-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
   const customerName = `${firstName || ''} ${lastName || ''}`.trim();
-  const shippingAddress = `${address || ''}, ${city || ''}, ${state || ''} ${zip || ''}, ${country || 'United States'}`;
+  const addressParts = [
+    address,
+    [city, state].filter(Boolean).join(' '),
+    zip,
+    country
+  ].filter(part => part && String(part).trim());
+  const shippingAddress = addressParts.join(', ');
 
   // Validate that the selected payment account really exists and is active.
   let accountId = null;
@@ -387,15 +390,15 @@ router.post('/checkout/place-order', (req, res) => {
 
   const orderResult = db.insert('orders', {
     order_number: orderNumber,
-    customer_id: customer.id,
-    customer_email: customer.email || email,
+    customer_id: customer ? customer.id : null,
+    customer_email: (customer && customer.email) || email || '',
     customer_phone: phone,
     customer_name: customerName,
     shipping_address: shippingAddress,
-    shipping_city: city,
-    shipping_state: state,
-    shipping_zip: zip,
-    shipping_country: country || 'United States',
+    shipping_city: city || '',
+    shipping_state: state || '',
+    shipping_zip: zip || '',
+    shipping_country: country || '',
     shipping_method: 'Standard Shipping',
     shipping_cost: pricing.shippingCents / 100,
     subtotal: pricing.subtotalCents / 100,
@@ -439,12 +442,21 @@ router.post('/checkout/place-order', (req, res) => {
   });
 
   // Only this session's cart is cleared.
-  if (sessionCustomer) cart.clear(customer.id);
+  if (sessionCustomer) cart.clear(sessionCustomer.id);
   else cart.clearGuest(req.session);
   auth.markLastOrder(req, orderId);
 
   renderPage(res, 'order-confirmation.html', {
-    orderNumber, orderId, total: (pricing.totalCents / 100).toFixed(2), email: customer.email || email,
+    orderNumber,
+    orderId,
+    total: (pricing.totalCents / 100).toFixed(2),
+    email: (customer && customer.email) || email || '',
+    phone: phone || '',
+    // No email is collected any more, so the confirmation explains how the
+    // store will follow up instead of promising a receipt email.
+    contactLine: phone
+      ? req.t('orderConfirm.contactWithPhone', { phone })
+      : req.t('orderConfirm.contactNoPhone'),
     pageTitle: req.t('orderConfirm.title')
   });
 });

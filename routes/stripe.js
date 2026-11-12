@@ -39,32 +39,51 @@ function threeDSecureRequest() {
   return process.env.STRIPE_2D_ONLY === 'false' ? 'any' : 'automatic';
 }
 
-function validateCheckoutDetails(body) {
+// Marks an error as safe to show to the customer, in whatever language it was
+// rendered in (the generic message below is English-only).
+function badRequest(message) {
+  const error = new Error(message);
+  error.isClientError = true;
+  return error;
+}
+
+// Minimal checkout: only a contact phone is required. Name, email and address
+// are optional because the storefront no longer asks for them.
+function validateCheckoutDetails(body, t) {
+  const tr = typeof t === 'function' ? t : (key, fallback) => fallback;
   const details = {};
   for (const key of ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'state', 'zip', 'country']) {
-    details[key] = String(body[key] || '').trim();
+    details[key] = String(body[key] || '').trim().slice(0, 200);
   }
   details.notes = String(body.notes || '').trim().slice(0, 2000);
-  const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'state', 'zip', 'country'];
-  if (requiredFields.some(key => !details[key])) {
-    throw new Error('Please complete all required contact and shipping fields.');
+
+  if (!details.phone) throw badRequest(tr('checkout.errPhoneRequired', 'A contact phone number is required.'));
+  if (details.phone.replace(/\D/g, '').length < 6) {
+    throw badRequest(tr('checkout.errPhoneInvalid', 'Please enter a valid phone number.'));
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) throw new Error('Please enter a valid email address.');
+  if (details.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) {
+    throw badRequest(tr('checkout.errEmailInvalid', 'Please enter a valid email address.'));
+  }
   return details;
 }
 
+// Returns '' when no address was collected, so the order record stays empty
+// instead of storing a string of bare commas.
 function formatAddress(details) {
-  return `${details.address}, ${details.city}, ${details.state} ${details.zip}, ${details.country}`;
+  const cityLine = [details.city, details.state].filter(Boolean).join(' ');
+  const parts = [details.address, [cityLine, details.zip].filter(Boolean).join(' '), details.country]
+    .filter(part => part && part.trim());
+  return parts.join(', ');
 }
 
 function createOrder(details, pricing, stripeAccount, customer) {
   const orderNumber = `ORD-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-  const customerName = `${details.firstName} ${details.lastName}`.trim();
+  const customerName = `${details.firstName || ''} ${details.lastName || ''}`.trim();
   const shippingAddress = formatAddress(details);
   const orderResult = db.insert('orders', {
     order_number: orderNumber,
-    customer_id: customer.id,
-    customer_email: details.email,
+    customer_id: customer ? customer.id : null,
+    customer_email: details.email || (customer && customer.email) || '',
     customer_phone: details.phone,
     customer_name: customerName,
     shipping_address: shippingAddress,
@@ -131,7 +150,7 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
   let orderId = null;
   let stripeRequestStarted = false;
   try {
-    const details = validateCheckoutDetails(req.body);
+    const details = validateCheckoutDetails(req.body, req.t);
     const settings = getSettings();
     // Price the server-side cart before touching Stripe, so an empty or
     // tampered request can never reach the payment provider.
@@ -142,15 +161,16 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Stripe is not configured for the selected payment method.' });
     }
 
-    const customer = auth.getCustomer(req) || auth.findOrCreateCustomer({
-      email: details.email,
-      firstName: details.firstName,
-      lastName: details.lastName,
-      phone: details.phone
-    });
-    if (!customer) {
-      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
-    }
+    // Guests who did not give an email are not turned into customer records:
+    // the order stands on its own and the browser keeps access via lastOrderId.
+    const customer = auth.getCustomer(req) || (details.email
+      ? auth.findOrCreateCustomer({
+        email: details.email,
+        firstName: details.firstName,
+        lastName: details.lastName,
+        phone: details.phone
+      })
+      : null);
 
     const created = createOrder(details, pricing, stripeAccount, customer);
     orderId = created.orderId;
@@ -166,12 +186,12 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
       payment_method_options: {
         card: { request_three_d_secure: threeDSecureRequest() }
       },
-      receipt_email: details.email,
+      receipt_email: details.email || undefined,
       description: `${settings.store_name || 'Store'} order ${created.orderNumber}`,
       metadata: {
         order_id: String(created.orderId),
         order_number: created.orderNumber,
-        customer_id: String(customer.id)
+        customer_id: customer ? String(customer.id) : ''
       }
     }, { idempotencyKey: `order-${created.orderNumber}` });
 
@@ -189,10 +209,11 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
   } catch (error) {
     if (orderId !== null) removePendingOrder(orderId);
     console.error('Stripe PaymentIntent creation failed:', error.message);
-    const clientError = /cart|stock|available|required|valid|configured|quantity|cent amount/i.test(error.message)
+    const clientMessage = error.isClientError ||
+      /cart|stock|available|required|valid|configured|quantity|cent amount/i.test(error.message)
       ? error.message
       : 'Unable to start your payment right now. Please try again.';
-    return res.status(stripeRequestStarted ? 502 : 400).json({ success: false, error: clientError });
+    return res.status(stripeRequestStarted ? 502 : 400).json({ success: false, error: clientMessage });
   }
 });
 
@@ -341,11 +362,14 @@ router.post('/webhook', async (req, res) => {
         // account, same PaymentIntent, and same owning customer. A mismatch means
         // the event cannot be trusted for this order, so it is rejected outright
         // instead of being silently ignored.
+        // Guest orders have no customer id, so null and '' must compare equal.
+        const orderCustomerId = order.customer_id === null || order.customer_id === undefined ? '' : String(order.customer_id);
+        const intentCustomerId = String((intent.metadata && intent.metadata.customer_id) || '');
         const bindingOk = order.payment_method === 'stripe' &&
           String(order.order_number) === orderNumber &&
           String(order.payment_account_id) === String(stripeAccount.id) &&
           String(order.transaction_id) === String(intent.id) &&
-          String(order.customer_id) === String(intent.metadata && intent.metadata.customer_id);
+          orderCustomerId === intentCustomerId;
         if (!bindingOk) {
           console.error('Stripe webhook rejected: order binding mismatch for event', event.id);
           return res.status(400).send('Payment does not match the order.');

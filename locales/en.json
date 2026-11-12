@@ -59,9 +59,8 @@
     "total": "Total",
     "free": "Free",
     "completeTitle": "Complete payment in your cart",
-    "completeIntro": "Enter your contact and delivery details, then pay securely by card without leaving this page.",
+    "completeIntro": "Enter a phone number and pay securely by card — nothing else needed.",
     "contactInfo": "Contact Information",
-    "deliveryAddress": "Delivery Address",
     "paymentMethod": "Payment Method",
     "orderNotes": "Order Notes (Optional)",
     "notesPlaceholder": "Any special instructions for your order...",
@@ -83,12 +82,12 @@
     "errConfirmDelayed": "Payment confirmation is delayed.",
     "errFailed": "Payment failed. Please try again.",
     "errStripeLoad": "Unable to load the secure Stripe payment form.",
-    "errStripeInit": "Stripe.js did not initialize."
+    "errStripeInit": "Stripe.js did not initialize.",
+    "contactPhone": "Contact phone *"
   },
   "checkout": {
     "title": "Checkout",
     "contactInfo": "Contact Information",
-    "shippingAddress": "Shipping Address",
     "paymentMethod": "Payment Method",
     "orderNotes": "Order Notes (Optional)",
     "notesPlaceholder": "Any special instructions for your order...",
@@ -131,18 +130,12 @@
     "errCashAppCancelled": "Cash App payment was cancelled",
     "errSquareLoad": "Failed to load Square SDK",
     "errStripeLoad": "Unable to load the secure Stripe payment form.",
-    "errStripeInit": "Stripe.js did not initialize."
-  },
-  "field": {
-    "firstName": "First Name *",
-    "lastName": "Last Name *",
-    "email": "Email *",
-    "phone": "Phone *",
-    "address": "Street Address *",
-    "city": "City *",
-    "state": "State / Province *",
-    "zip": "ZIP / Postal Code *",
-    "country": "Country *"
+    "errStripeInit": "Stripe.js did not initialize.",
+    "contactPhone": "Contact phone *",
+    "subtitle": "Enter a phone number and pay securely.",
+    "errPhoneRequired": "A contact phone number is required.",
+    "errPhoneInvalid": "Please enter a valid phone number.",
+    "errEmailInvalid": "Please enter a valid email address."
   },
   "account": {
     "title": "My Account",
@@ -380,9 +373,10 @@
     "orderNumber": "Order Number",
     "trackThis": "Track This Order",
     "continueShopping": "Continue Shopping",
-    "bodyBefore": "We've received your order and will process it shortly. A confirmation email has been sent to ",
-    "bodyAfter": ".",
     "totalBefore": "Your order total is ",
-    "loginHint": "Save your order number — you can sign in later with your email and this number. No password needed."
+    "received": "We've received your order and will process it shortly.",
+    "contactWithPhone": "We'll contact you at {phone} to confirm delivery details.",
+    "contactNoPhone": "We'll be in touch shortly to confirm delivery details.",
+    "saveOrder": "Keep your order number handy in case you need to check on it."
   }
 }
