@@ -1,0 +1,38 @@
+name: Deploy to Render
+
+# The hosting service was created manually in the Render dashboard, so the
+# autoDeploy flag in render.yaml is not applied. Trigger the service's Deploy
+# Hook on every push to master instead. The hook URL is a repository secret and
+# is never printed to the workflow log.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${RENDER_DEPLOY_HOOK_URL}" ]]; then
+            echo "::error::Secret RENDER_DEPLOY_HOOK_URL is not set. Add it in Settings -> Secrets and variables -> Actions, then re-run this workflow."
+            exit 1
+          fi
+          status=$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$RENDER_DEPLOY_HOOK_URL")
+          echo "Render deploy hook HTTP status: ${status}"
+          case "$status" in
+            200|201|202|204) echo "Deploy triggered." ;;
+            *) echo "::error::Deploy hook returned HTTP ${status}"; exit 1 ;;
+          esac
