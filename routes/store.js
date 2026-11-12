@@ -23,10 +23,19 @@ function isStripeConfigured(config) {
   return Boolean(correctPrefixes && (mode !== 'live' || webhookSecret));
 }
 
-// Build the cart view model strictly from the signed-in customer's own rows.
+// Resolve the cart for whoever is asking: the signed-in customer's rows, or the
+// guest's own session cart. Both are scoped to one browser, so nobody can read
+// somebody else's cart on any IP address.
+function cartSource(req) {
+  const customer = auth.getCustomer(req);
+  if (customer) return { customer, items: cart.buildDetail(customer.id).items };
+  return { customer: null, items: cart.buildGuestDetail(req.session).items };
+}
+
+// Build the cart view model from server-resolved products only.
 // Product ids, prices and quantities never come from the browser.
-function buildCartView(customerId, locale = i18n.DEFAULT_LOCALE) {
-  const { items } = cart.buildDetail(customerId);
+function buildCartView(req, locale = i18n.DEFAULT_LOCALE) {
+  const { items } = cartSource(req);
   if (items.length === 0) {
     return { cartItems: [], subtotal: 0, shippingCost: 0, tax: 0, total: 0 };
   }
@@ -230,13 +239,12 @@ router.get('/products/:slug', (req, res) => {
   });
 });
 
-// ===== Cart (customer-only, database backed) =====
-// The cart is read from `cart_items` for the signed-in customer. A visitor
-// without a customer session is sent to sign in; they never see a cart that
-// belongs to somebody else, on any IP address.
-router.get('/cart', auth.requireCustomerPage, (req, res) => {
+// ===== Cart =====
+// Guests keep their cart in their own session; signed-in customers use their
+// database rows. Either way the cart is scoped to one browser session.
+router.get('/cart', (req, res) => {
   const customer = auth.getCustomer(req);
-  const view = buildCartView(customer.id, req.locale);
+  const view = buildCartView(req, req.locale);
 
   // Expose only public account labels and Stripe availability; never send payment credentials to the browser.
   const paymentAccounts = db.findAll('payment_accounts', { where: { status: 'active' } })
@@ -289,27 +297,29 @@ router.post('/cart/add', (req, res) => {
   return res.redirect('/cart');
 });
 
-// Update cart — scoped to the current customer's rows only.
-router.post('/cart/update', auth.requireCustomerPage, (req, res) => {
+// Update cart — scoped to the current customer's rows, or the guest session.
+router.post('/cart/update', (req, res) => {
   const customer = auth.getCustomer(req);
   const productId = parseInt(req.body.productId);
   const quantity = parseInt(req.body.quantity);
-  cart.setQuantity(customer.id, productId, quantity);
+  if (customer) cart.setQuantity(customer.id, productId, quantity);
+  else cart.setGuestQuantity(req.session, productId, quantity);
   res.redirect('/cart');
 });
 
-// Remove from cart — scoped to the current customer's rows only.
-router.post('/cart/remove', auth.requireCustomerPage, (req, res) => {
+// Remove from cart — scoped to the current customer's rows, or the guest session.
+router.post('/cart/remove', (req, res) => {
   const customer = auth.getCustomer(req);
   const productId = parseInt(req.body.productId);
-  cart.remove(customer.id, productId);
+  if (customer) cart.remove(customer.id, productId);
+  else cart.removeGuest(req.session, productId);
   res.redirect('/cart');
 });
 
-// ===== Checkout (customer-only) =====
-router.get('/checkout', auth.requireCustomerPage, (req, res) => {
+// ===== Checkout =====
+router.get('/checkout', (req, res) => {
   const customer = auth.getCustomer(req);
-  const view = buildCartView(customer.id, req.locale);
+  const view = buildCartView(req, req.locale);
   if (view.cartItems.length === 0) {
     return res.redirect('/cart');
   }
@@ -344,16 +354,23 @@ router.get('/checkout', auth.requireCustomerPage, (req, res) => {
   });
 });
 
-// Place an offline/unpaid order. The line items are rebuilt from the customer's
-// own database cart; any product or amount supplied by the browser is ignored.
-router.post('/checkout/place-order', auth.requireCustomerPage, (req, res) => {
-  const customer = auth.getCustomer(req);
-  const { items } = cart.buildDetail(customer.id);
+// Place an offline/unpaid order. The line items are rebuilt from the cart on the
+// server; any product or amount supplied by the browser is ignored. Guests can
+// order too: the customer record is created from the checkout email.
+router.post('/checkout/place-order', (req, res) => {
+  const sessionCustomer = auth.getCustomer(req);
+  const { items } = sessionCustomer
+    ? cart.buildDetail(sessionCustomer.id)
+    : cart.buildGuestDetail(req.session);
   if (items.length === 0) {
     return res.redirect('/cart');
   }
 
   const { email, phone, firstName, lastName, address, city, state, zip, country, paymentMethod, paymentAccountId, notes } = req.body;
+  const customer = sessionCustomer || auth.findOrCreateCustomer({ email, firstName, lastName, phone });
+  if (!customer) {
+    return res.redirect('/cart');
+  }
   const settings = getSettings();
   const pricing = cart.price(items, settings);
 
@@ -421,8 +438,10 @@ router.post('/checkout/place-order', auth.requireCustomerPage, (req, res) => {
     notes: ''
   });
 
-  // Only this customer's cart is cleared.
-  cart.clear(customer.id);
+  // Only this session's cart is cleared.
+  if (sessionCustomer) cart.clear(customer.id);
+  else cart.clearGuest(req.session);
+  auth.markLastOrder(req, orderId);
 
   renderPage(res, 'order-confirmation.html', {
     orderNumber, orderId, total: (pricing.totalCents / 100).toFixed(2), email: customer.email || email,

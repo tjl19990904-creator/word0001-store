@@ -21,10 +21,22 @@ function getSettings() {
 
 // Price the signed-in customer's persisted cart. Nothing here is read from the
 // request body, so a client cannot substitute products or amounts.
-function getCustomerCartPricing(customerId, settings) {
-  const { items } = cart.buildDetail(customerId);
+// Price whatever cart this request owns: the customer's rows, or the guest's
+// session cart. Never trusts product ids or amounts from the browser.
+function getRequestCartPricing(req, settings) {
+  const customer = auth.getCustomer(req);
+  const { items } = customer
+    ? cart.buildDetail(customer.id)
+    : cart.buildGuestDetail(req.session);
   if (items.length === 0) throw new Error('Your cart is empty.');
   return cart.price(items, settings);
+}
+
+// 2-D (no 3-D Secure challenge) is the default. Stripe still falls back to 3DS
+// when the card issuer or local regulation (EU/UK SCA) requires it — that step
+// cannot be disabled from the API, only from the issuer side.
+function threeDSecureRequest() {
+  return process.env.STRIPE_2D_ONLY === 'false' ? 'any' : 'automatic';
 }
 
 function validateCheckoutDetails(body) {
@@ -113,26 +125,37 @@ function removePendingOrder(orderId) {
   db.delete('orders', orderId);
 }
 
-// Create a server-priced order and PaymentIntent for the signed-in customer.
-// The cart is loaded from the customer's own rows; the secret key never leaves the server.
-router.post('/stripe/create-payment-intent', auth.requireCustomerApi, async (req, res) => {
+// Create a server-priced order and PaymentIntent. Guests can pay too: the
+// customer record is created from the checkout email, without a password.
+router.post('/stripe/create-payment-intent', async (req, res) => {
   let orderId = null;
   let stripeRequestStarted = false;
   try {
-    const customer = auth.getCustomer(req);
     const details = validateCheckoutDetails(req.body);
     const settings = getSettings();
-    // Price the customer's persisted cart before touching Stripe, so an empty
-    // or tampered request can never reach the payment provider.
-    const pricing = getCustomerCartPricing(customer.id, settings);
+    // Price the server-side cart before touching Stripe, so an empty or
+    // tampered request can never reach the payment provider.
+    const pricing = getRequestCartPricing(req, settings);
 
     const stripeAccount = getStripeAccount(req.body.paymentAccountId);
     if (!stripeAccount) {
       return res.status(400).json({ success: false, error: 'Stripe is not configured for the selected payment method.' });
     }
 
+    const customer = auth.getCustomer(req) || auth.findOrCreateCustomer({
+      email: details.email,
+      firstName: details.firstName,
+      lastName: details.lastName,
+      phone: details.phone
+    });
+    if (!customer) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+    }
+
     const created = createOrder(details, pricing, stripeAccount, customer);
     orderId = created.orderId;
+    // Lets the paying browser open the result page without being signed in.
+    auth.markLastOrder(req, created.orderId);
 
     const stripeClient = stripe(stripeAccount.config_data.secret_key);
     stripeRequestStarted = true;
@@ -140,6 +163,9 @@ router.post('/stripe/create-payment-intent', auth.requireCustomerApi, async (req
       amount: pricing.totalCents,
       currency: CURRENCY,
       automatic_payment_methods: { enabled: true },
+      payment_method_options: {
+        card: { request_three_d_secure: threeDSecureRequest() }
+      },
       receipt_email: details.email,
       description: `${settings.store_name || 'Store'} order ${created.orderNumber}`,
       metadata: {
@@ -171,13 +197,12 @@ router.post('/stripe/create-payment-intent', auth.requireCustomerApi, async (req
 });
 
 // Server-side verification after Stripe.js confirms the payment. Webhooks remain authoritative.
-// Ownership is re-checked here: the order must belong to the session customer.
-router.post('/stripe/confirm-payment', auth.requireCustomerApi, async (req, res) => {
+// Ownership is re-checked here: the order must belong to the session customer,
+// or to the guest checkout that created it in this browser.
+router.post('/stripe/confirm-payment', async (req, res) => {
   try {
-    const customer = auth.getCustomer(req);
     const order = db.findOne('orders', { id: Number(req.body.orderId) });
-    if (!order || order.payment_method !== 'stripe' ||
-        String(order.customer_id) !== String(customer.id)) {
+    if (!order || order.payment_method !== 'stripe' || !auth.ownsOrder(req, order)) {
       return res.status(404).json({ success: false, error: 'Order not found.' });
     }
     const stripeAccount = getStripeAccount(order.payment_account_id, true) || getStripeAccount(order.payment_account_id, false);
@@ -214,7 +239,13 @@ router.post('/stripe/confirm-payment', auth.requireCustomerApi, async (req, res)
       return res.status(409).json({ success: false, error: 'Payment could not be verified.' });
     }
     markOrderPaid(order, intent);
-    cart.clear(customer.id);
+    // Clear whichever cart this browser used: the customer's rows or the session.
+    const sessionCustomer = auth.getCustomer(req);
+    if (sessionCustomer && String(order.customer_id) === String(sessionCustomer.id)) {
+      cart.clear(sessionCustomer.id);
+    } else {
+      cart.clearGuest(req.session);
+    }
     return res.json({ success: true, orderNumber: order.order_number, paymentStatus: 'paid' });
   } catch (error) {
     console.error('Stripe payment confirmation failed:', error.message);
@@ -223,14 +254,13 @@ router.post('/stripe/confirm-payment', auth.requireCustomerApi, async (req, res)
 });
 
 // Payment return page: independently verifies the PaymentIntent before showing paid status.
-// Only the customer who owns the order may view it.
-router.get('/success', auth.requireCustomerPage, async (req, res) => {
-  const customer = auth.getCustomer(req);
+// Visible to the signed-in owner, or to the guest checkout that created it.
+router.get('/success', async (req, res) => {
   const orderNumber = String(req.query.order || '');
   const intentId = String(req.query.payment_intent || req.query.payment_intent_id || '');
 
   const found = orderNumber ? db.findOne('orders', { order_number: orderNumber }) : null;
-  const order = found && String(found.customer_id) === String(customer.id) ? found : null;
+  const order = found && auth.ownsOrder(req, found) ? found : null;
   if (orderNumber && !order) {
     return res.status(404).send(
       '<h1>' + req.t('account.orderNotFound') + '</h1>' +
@@ -254,7 +284,14 @@ router.get('/success', auth.requireCustomerPage, async (req, res) => {
   }
 
   const orderItems = order ? db.findAll('order_items', { where: { order_id: order.id } }) : [];
-  if (isPaid) cart.clear(customer.id);
+  if (isPaid && order) {
+    const sessionCustomer = auth.getCustomer(req);
+    if (sessionCustomer && String(order.customer_id) === String(sessionCustomer.id)) {
+      cart.clear(sessionCustomer.id);
+    } else {
+      cart.clearGuest(req.session);
+    }
+  }
   return renderSuccessPage(res, order, orderItems, isPaid);
 });
 

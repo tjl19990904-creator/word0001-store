@@ -154,22 +154,10 @@
     "statusPrefix": "状态：",
     "paymentPrefix": "支付：",
     "viewDetails": "查看详情",
-    "loginTitle": "登录您的账户",
-    "loginSubtitle": "购物车与订单都与账户绑定，只有您本人可见。",
+    "loginTitle": "用订单号登录",
+    "loginSubtitle": "无需密码——输入下单时使用的邮箱，以及订单确认页上的订单号即可登录。",
     "emailLabel": "邮箱地址",
-    "passwordLabel": "密码",
     "signIn": "登录",
-    "newCustomer": "还没有账户？",
-    "createAccountLink": "立即注册",
-    "registerTitle": "创建账户",
-    "registerSubtitle": "购物车与历史订单仅您本人可见。",
-    "firstName": "名",
-    "lastName": "姓",
-    "phoneOptional": "电话（选填）",
-    "passwordHint": "密码（至少 8 位）",
-    "confirmPassword": "确认密码",
-    "createAccount": "注册",
-    "haveAccount": "已有账户？",
     "orderTitle": "订单",
     "backToAccount": "返回我的账户",
     "orderNotFound": "未找到该订单。",
@@ -192,13 +180,13 @@
     "notAssigned": "未分配",
     "notAvailableYet": "暂未生成",
     "errTooMany": "登录尝试过于频繁，请等待几分钟后再试。",
-    "errMissingCredentials": "请输入邮箱地址和密码。",
-    "errInvalidCredentials": "邮箱或密码不正确。",
-    "errInvalidEmail": "请输入有效的邮箱地址。",
-    "errPasswordShort": "密码至少需要 8 位。",
-    "errPasswordMismatch": "两次输入的密码不一致。",
-    "errEmailExists": "该邮箱已注册，请直接登录。",
-    "orderNotFoundHint": "该订单不属于您的账户。"
+    "orderNotFoundHint": "该订单不属于您的账户。",
+    "orderNumberLabel": "订单号",
+    "orderNumberPlaceholder": "例如 ORD-1700000000-1A2B3C4D",
+    "loginHint": "订单号显示在订单确认页和收据邮件中。任意一笔属于您的订单都可以用来登录。",
+    "noOrderYet": "还没有订单？去逛逛",
+    "errMissingRecord": "请输入下单时使用的邮箱和订单号。",
+    "errNoPaymentRecord": "邮箱与订单号不匹配，请核对后重试。"
   },
   "status": {
     "order": {
@@ -394,6 +382,7 @@
     "continueShopping": "继续购物",
     "bodyBefore": "我们已收到您的订单，将尽快处理。确认邮件已发送至 ",
     "bodyAfter": "。",
-    "totalBefore": "订单合计为 "
+    "totalBefore": "订单合计为 ",
+    "loginHint": "请保存好订单号——之后用「邮箱 + 订单号」即可登录，无需密码。"
   }
 }

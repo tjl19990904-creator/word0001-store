@@ -6,8 +6,6 @@
   <title>{{t:account.signIn}} - {{settings.store_name}}</title>
   <link rel="canonical" href="{{canonicalUrl}}">
   <meta name="robots" content="noindex,follow">
-  <link rel="alternate" hreflang="en" href="{{altEnUrl}}">
-  <link rel="alternate" hreflang="zh-CN" href="{{altZhUrl}}">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -29,7 +27,7 @@
     </div>
   </header>
 
-  <div class="container" style="max-width:460px; padding:60px 20px;">
+  <div class="container" style="max-width:480px; padding:60px 20px;">
     <h1 style="font-size:1.9em; margin-bottom:8px;">{{t:account.loginTitle}}</h1>
     <p style="color:#667; margin-bottom:24px;">{{t:account.loginSubtitle}}</p>
 
@@ -43,15 +41,20 @@
                style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px;">
       </div>
       <div>
-        <label for="login-password" style="display:block; font-size:13px; margin-bottom:6px;">{{t:account.passwordLabel}}</label>
-        <input id="login-password" name="password" type="password" autocomplete="current-password" required
-               style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px;">
+        <label for="login-order" style="display:block; font-size:13px; margin-bottom:6px;">{{t:account.orderNumberLabel}}</label>
+        <input id="login-order" name="orderNumber" type="text" autocomplete="off" required
+               placeholder="{{t:account.orderNumberPlaceholder}}" value="{{data.orderNumber}}"
+               style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:0.5px;">
       </div>
       <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">{{t:account.signIn}}</button>
     </form>
 
+    <p style="margin-top:16px; font-size:13px; color:#889; line-height:1.6;">
+      {{t:account.loginHint}}
+    </p>
+
     <p style="margin-top:20px; font-size:14px; color:#667;">
-      {{t:account.newCustomer}} <a href="/account/register?next={{data.nextParam}}" style="color:#2e7d32; font-weight:600;">{{t:account.createAccountLink}}</a>
+      <a href="/products" style="color:#2e7d32; font-weight:600;">{{t:account.noOrderYet}}</a>
     </p>
   </div>
 

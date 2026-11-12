@@ -154,22 +154,10 @@
     "statusPrefix": "Status:",
     "paymentPrefix": "Payment:",
     "viewDetails": "View details",
-    "loginTitle": "Sign in to your account",
-    "loginSubtitle": "Your cart and orders are tied to your account, so only you can see them.",
+    "loginTitle": "Sign in with your order",
+    "loginSubtitle": "No password needed — enter the email you used at checkout and the order number from your confirmation.",
     "emailLabel": "Email address",
-    "passwordLabel": "Password",
     "signIn": "Sign in",
-    "newCustomer": "New customer?",
-    "createAccountLink": "Create an account",
-    "registerTitle": "Create your account",
-    "registerSubtitle": "Your cart and order history stay private to your account.",
-    "firstName": "First name",
-    "lastName": "Last name",
-    "phoneOptional": "Phone (optional)",
-    "passwordHint": "Password (at least 8 characters)",
-    "confirmPassword": "Confirm password",
-    "createAccount": "Create account",
-    "haveAccount": "Already have an account?",
     "orderTitle": "Order",
     "backToAccount": "Back to my account",
     "orderNotFound": "Order not found.",
@@ -192,13 +180,13 @@
     "notAssigned": "Not assigned",
     "notAvailableYet": "Not available yet",
     "errTooMany": "Too many sign-in attempts. Please wait a few minutes and try again.",
-    "errMissingCredentials": "Please enter your email address and password.",
-    "errInvalidCredentials": "Invalid email or password.",
-    "errInvalidEmail": "Please enter a valid email address.",
-    "errPasswordShort": "Password must be at least 8 characters long.",
-    "errPasswordMismatch": "The two passwords do not match.",
-    "errEmailExists": "An account with this email already exists. Please sign in instead.",
-    "orderNotFoundHint": "This order does not belong to your account."
+    "orderNotFoundHint": "This order does not belong to your account.",
+    "orderNumberLabel": "Order number",
+    "orderNumberPlaceholder": "e.g. ORD-1700000000-1A2B3C4D",
+    "loginHint": "Your order number is shown on the order confirmation page and in your receipt email. Any order that belongs to you can be used to sign in.",
+    "noOrderYet": "No order yet? Start shopping",
+    "errMissingRecord": "Enter the email you used at checkout and your order number.",
+    "errNoPaymentRecord": "We could not match that email and order number. Please check both and try again."
   },
   "status": {
     "order": {
@@ -394,6 +382,7 @@
     "continueShopping": "Continue Shopping",
     "bodyBefore": "We've received your order and will process it shortly. A confirmation email has been sent to ",
     "bodyAfter": ".",
-    "totalBefore": "Your order total is "
+    "totalBefore": "Your order total is ",
+    "loginHint": "Save your order number — you can sign in later with your email and this number. No password needed."
   }
 }

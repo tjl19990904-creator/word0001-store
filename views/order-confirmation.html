@@ -33,6 +33,7 @@
       <div class="order-number">{{t:orderConfirm.orderNumber}}: {{data.orderNumber}}</div>
       <p>{{t:orderConfirm.bodyBefore}}<strong>{{data.email}}</strong>{{t:orderConfirm.bodyAfter}}</p>
       <p>{{t:orderConfirm.totalBefore}}<strong>${{data.total}}</strong></p>
+      <p style="margin-top:14px; font-size:13px; color:#889;">{{t:orderConfirm.loginHint}}</p>
       <div style="margin-top:30px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
         <a href="{{localePrefix}}/track-order?order_number={{data.orderNumber}}" class="btn btn-primary">{{t:orderConfirm.trackThis}}</a>
         <a href="/products" class="btn btn-outline">{{t:orderConfirm.continueShopping}}</a>

@@ -48,17 +48,15 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Values echoed back into the login/register forms must be escaped.
-function authFormView({ next, error, email, firstName, lastName, phone }) {
+// Values echoed back into the sign-in form must be escaped.
+function authFormView({ next, error, email, orderNumber }) {
   return {
     next: escapeHtml(next),
     nextParam: encodeURIComponent(next),
     error: escapeHtml(error || ''),
     errorDisplay: error ? 'block' : 'none',
     email: escapeHtml(email || ''),
-    firstName: escapeHtml(firstName || ''),
-    lastName: escapeHtml(lastName || ''),
-    phone: escapeHtml(phone || '')
+    orderNumber: escapeHtml(orderNumber || '')
   };
 }
 
@@ -71,7 +69,9 @@ function isValidEmail(value) {
 }
 
 // ---------------------------------------------------------------------------
-// Sign in
+// Sign in — passwordless. The credential is an email plus the order number of
+// one of that email's own orders. Accounts are created at checkout, so every
+// buyer already has at least one order.
 // ---------------------------------------------------------------------------
 router.get('/login', (req, res) => {
   const customer = auth.getCustomer(req);
@@ -79,34 +79,42 @@ router.get('/login', (req, res) => {
   if (customer) return res.redirect(next);
 
   return renderPage(res, 'account-login.html', {
-    pageTitle: 'Sign In',
+    pageTitle: req.t('account.signIn'),
     ...authFormView({ next })
   });
 });
 
 router.post('/login', async (req, res) => {
   const email = normalizeEmail(req.body.email);
-  const password = String(req.body.password || '');
+  const orderNumber = String(req.body.orderNumber || '').trim().toUpperCase();
   const next = auth.safeNextPath(req.body.next);
   const key = attemptKey(req, email);
 
   const renderError = (message) => renderPage(res, 'account-login.html', {
-    pageTitle: 'Sign In',
-    ...authFormView({ next, error: message, email })
+    pageTitle: req.t('account.signIn'),
+    ...authFormView({ next, error: message, email, orderNumber })
   });
 
   if (isThrottled(key)) {
     return renderError(req.t('account.errTooMany'));
   }
-  if (!isValidEmail(email) || !password) {
+  if (!isValidEmail(email) || !orderNumber) {
     recordFailure(key);
-    return renderError(req.t('account.errMissingCredentials'));
+    return renderError(req.t('account.errMissingRecord'));
   }
 
-  const customer = db.findOne('customers', { email });
-  if (!customer || customer.status === 'disabled' || !auth.verifyPassword(password, customer.password_hash)) {
+  const record = auth.findPaymentRecord(email, orderNumber);
+  if (!record) {
+    // Same message for "unknown email" and "wrong order number" so the form
+    // cannot be used to discover which emails have shopped here.
     recordFailure(key);
-    return renderError(req.t('account.errInvalidCredentials'));
+    return renderError(req.t('account.errNoPaymentRecord'));
+  }
+
+  const customer = record.customer || auth.findOrCreateCustomer({ email });
+  if (!customer || customer.status === 'disabled') {
+    recordFailure(key);
+    return renderError(req.t('account.errNoPaymentRecord'));
   }
 
   clearFailures(key);
@@ -123,57 +131,15 @@ router.post('/login', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Create account
+// Registration no longer exists. Old links and bookmarks land on sign-in.
 // ---------------------------------------------------------------------------
 router.get('/register', (req, res) => {
-  const customer = auth.getCustomer(req);
   const next = auth.safeNextPath(req.query.next);
-  if (customer) return res.redirect(next);
-
-  return renderPage(res, 'account-register.html', {
-    pageTitle: 'Create Account',
-    ...authFormView({ next })
-  });
+  return res.redirect('/account/login?next=' + encodeURIComponent(next));
 });
 
-router.post('/register', async (req, res) => {
-  const email = normalizeEmail(req.body.email);
-  const password = String(req.body.password || '');
-  const confirm = String(req.body.confirmPassword || '');
-  const firstName = String(req.body.firstName || '').trim().slice(0, 80);
-  const lastName = String(req.body.lastName || '').trim().slice(0, 80);
-  const phone = String(req.body.phone || '').trim().slice(0, 40);
-  const next = auth.safeNextPath(req.body.next);
-
-  const renderError = (message) => renderPage(res, 'account-register.html', {
-    pageTitle: 'Create Account',
-    ...authFormView({ next, error: message, email, firstName, lastName, phone })
-  });
-
-  if (!isValidEmail(email)) return renderError(req.t('account.errInvalidEmail'));
-  if (password.length < 8) return renderError(req.t('account.errPasswordShort'));
-  if (password !== confirm) return renderError(req.t('account.errPasswordMismatch'));
-  if (db.findOne('customers', { email })) {
-    return renderError(req.t('account.errEmailExists'));
-  }
-
-  const result = db.insert('customers', {
-    email,
-    password_hash: auth.hashPassword(password),
-    first_name: firstName,
-    last_name: lastName,
-    phone,
-    status: 'active'
-  });
-  const customerId = result.lastInsertRowid;
-
-  const guestCart = Array.isArray(req.session.cart) ? req.session.cart.slice() : [];
-  await auth.regenerateSession(req);
-  req.session.customerId = customerId;
-  req.session.cart = [];
-  cart.mergeGuest(customerId, guestCart);
-
-  return res.redirect(next);
+router.post('/register', (req, res) => {
+  return res.redirect('/account/login');
 });
 
 // ---------------------------------------------------------------------------
