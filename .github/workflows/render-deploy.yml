@@ -20,16 +20,23 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Verify deploy hook secret
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        shell: bash
+        run: |
+          if [[ -z "${RENDER_DEPLOY_HOOK_URL}" ]]; then
+            echo "::error::Secret RENDER_DEPLOY_HOOK_URL is not set. Add it under Settings -> Secrets and variables -> Actions, then re-run this workflow."
+            exit 1
+          fi
+          echo "Deploy hook secret is configured."
+
       - name: Trigger Render deploy hook
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${RENDER_DEPLOY_HOOK_URL}" ]]; then
-            echo "::error::Secret RENDER_DEPLOY_HOOK_URL is not set. Add it in Settings -> Secrets and variables -> Actions, then re-run this workflow."
-            exit 1
-          fi
           status=$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$RENDER_DEPLOY_HOOK_URL")
           echo "Render deploy hook HTTP status: ${status}"
           case "$status" in
