@@ -12,8 +12,19 @@ const {
   recordPaymentFailure,
   isPendingIntent,
   validateIntentForOrder,
-  markOrderPaid
+  markOrderPaid,
+  resolvePaymentMethodType
 } = require('../lib/payment-status');
+
+// Wallets are enabled by `automatic_payment_methods` on the Intent. The store
+// front offers these as explicit one-click choices; the value is only recorded
+// as a preference/analytics hint and is never trusted to grant any capability.
+const WALLET_PREFERENCES = ['auto', 'card', 'apple_pay', 'link'];
+
+function normalizeWalletPreference(value) {
+  const normalized = String(value || 'auto').toLowerCase();
+  return WALLET_PREFERENCES.includes(normalized) ? normalized : 'auto';
+}
 
 function getSettings() {
   return db.getAllSettings();
@@ -74,7 +85,7 @@ function formatAddress(details) {
   return parts.join(', ');
 }
 
-function createOrder(details, pricing, stripeAccount, customer) {
+function createOrder(details, pricing, stripeAccount, customer, walletPreference) {
   const orderNumber = `ORD-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
   const customerName = details.name || `${details.firstName || ''} ${details.lastName || ''}`.trim();
   const shippingAddress = formatAddress(details);
@@ -97,6 +108,7 @@ function createOrder(details, pricing, stripeAccount, customer) {
     payment_status: 'pending',
     payment_method: 'stripe',
     payment_account_id: stripeAccount.id,
+    payment_wallet_preference: walletPreference,
     notes: details.notes,
     transaction_id: ''
   });
@@ -157,6 +169,7 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
     if (!stripeAccount) {
       return res.status(400).json({ success: false, error: 'Stripe is not configured for the selected payment method.' });
     }
+    const walletPreference = normalizeWalletPreference(req.body.walletPreference);
 
     // Guests who did not give an email are not turned into customer records:
     // the order stands on its own and the browser keeps access via lastOrderId.
@@ -168,7 +181,7 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
       })
       : null);
 
-    const created = createOrder(details, pricing, stripeAccount, customer);
+    const created = createOrder(details, pricing, stripeAccount, customer, walletPreference);
     orderId = created.orderId;
     // Lets the paying browser open the result page without being signed in.
     auth.markLastOrder(req, created.orderId);
@@ -187,7 +200,8 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
       metadata: {
         order_id: String(created.orderId),
         order_number: created.orderNumber,
-        customer_id: customer ? String(customer.id) : ''
+        customer_id: customer ? String(customer.id) : '',
+        wallet_preference: walletPreference
       }
     }, { idempotencyKey: `order-${created.orderNumber}` });
 
@@ -200,7 +214,8 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
       orderId: created.orderId,
       orderNumber: created.orderNumber,
       amount: pricing.totalCents,
-      currency: CURRENCY
+      currency: CURRENCY,
+      walletPreference
     });
   } catch (error) {
     if (orderId !== null) removePendingOrder(orderId);
@@ -263,7 +278,12 @@ router.post('/stripe/confirm-payment', async (req, res) => {
     } else {
       cart.clearGuest(req.session);
     }
-    return res.json({ success: true, orderNumber: order.order_number, paymentStatus: 'paid' });
+    return res.json({
+      success: true,
+      orderNumber: order.order_number,
+      paymentStatus: 'paid',
+      paymentMethodType: resolvePaymentMethodType(intent)
+    });
   } catch (error) {
     console.error('Stripe payment confirmation failed:', error.message);
     return res.status(502).json({ success: false, error: 'Payment confirmation is delayed. Do not pay again; refresh your order status shortly.' });

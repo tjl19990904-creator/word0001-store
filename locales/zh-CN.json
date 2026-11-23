@@ -138,7 +138,10 @@
     "errStripeInit": "Stripe.js 初始化失败。",
     "errNameRequired": "请填写姓名。",
     "errAddressRequired": "请填写收货地址。",
-    "errEmailInvalid": "请输入有效的邮箱地址。"
+    "errEmailInvalid": "请输入有效的邮箱地址。",
+    "expressDivider": "使用 Apple Pay 或 Link 快捷支付",
+    "expressOrCard": "或使用银行卡支付",
+    "errExpressPay": "钱包支付未能完成，请改用银行卡重试。"
   },
   "account": {
     "title": "我的账户",
@@ -204,7 +207,26 @@
   "common": {
     "defaultDecline": "发卡行拒绝了这笔支付。",
     "loading": "加载中…",
-    "backHome": "返回首页"
+    "backHome": "返回首页",
+    "decline": {
+      "do_not_honor": "发卡行拒绝了这张卡，请换一张卡或使用 Apple Pay / Link。",
+      "generic_decline": "支付被拒绝，请更换支付方式重试。",
+      "insufficient_funds": "余额或信用额度不足，请换一张卡。",
+      "expired_card": "该卡已过期，请换一张卡。",
+      "incorrect_cvc": "安全码（CVC）不正确，请核对后重试。",
+      "incorrect_number": "卡号不正确，请核对后重试。",
+      "invalid_expiry_month": "卡片有效期月份无效，请核对后重试。",
+      "invalid_expiry_year": "卡片有效期年份无效，请核对后重试。",
+      "processing_error": "银行暂时无法处理，请稍后重试。",
+      "card_not_supported": "不支持该卡种，请使用 Visa、Mastercard 或钱包支付。",
+      "transaction_not_allowed": "发卡行不允许此类境外线上支付，请联系银行或改用钱包支付。",
+      "fraudulent": "支付被银行判定为可疑交易，请联系银行或更换支付方式。",
+      "lost_card": "该卡已挂失，请换一张卡。",
+      "stolen_card": "该卡已被报失窃，请换一张卡。",
+      "pickup_card": "该卡无法使用，请换一张卡。",
+      "revocation_of_authorization": "授权已被撤销，请更换支付方式。",
+      "withdrawal_count_limit_exceeded": "已超过该卡的消费限额，请换卡或使用钱包支付。"
+    }
   },
   "lang": {
     "label": "语言",

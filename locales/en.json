@@ -138,7 +138,10 @@
     "errStripeInit": "Stripe.js did not initialize.",
     "errNameRequired": "Please enter a recipient name.",
     "errAddressRequired": "Please enter a shipping address.",
-    "errEmailInvalid": "Please enter a valid email address."
+    "errEmailInvalid": "Please enter a valid email address.",
+    "expressDivider": "Quick pay with Apple Pay or Link",
+    "expressOrCard": "or pay by card",
+    "errExpressPay": "The wallet payment could not be completed. Please try a card instead."
   },
   "account": {
     "title": "My Account",
@@ -204,7 +207,26 @@
   "common": {
     "defaultDecline": "Your bank declined the payment.",
     "loading": "Loading...",
-    "backHome": "Back to home"
+    "backHome": "Back to home",
+    "decline": {
+      "do_not_honor": "Your bank declined this card. Try another card or use Apple Pay / Link.",
+      "generic_decline": "The payment was declined. Try another payment method.",
+      "insufficient_funds": "Insufficient funds or credit limit. Try another card.",
+      "expired_card": "This card has expired. Try another card.",
+      "incorrect_cvc": "The security code (CVC) is incorrect. Please check and retry.",
+      "incorrect_number": "The card number is incorrect. Please check and retry.",
+      "invalid_expiry_month": "The card expiry month is invalid. Please check and retry.",
+      "invalid_expiry_year": "The card expiry year is invalid. Please check and retry.",
+      "processing_error": "The bank could not process this payment. Please try again.",
+      "card_not_supported": "This card type is not supported. Try Visa, Mastercard or a wallet.",
+      "transaction_not_allowed": "Your bank does not allow this online/international payment. Contact your bank or try a wallet.",
+      "fraudulent": "The payment was flagged as suspicious by your bank. Contact your bank or try another method.",
+      "lost_card": "This card was reported lost. Try another card.",
+      "stolen_card": "This card was reported stolen. Try another card.",
+      "pickup_card": "This card cannot be used. Try another card.",
+      "revocation_of_authorization": "Authorization was revoked. Try another payment method.",
+      "withdrawal_count_limit_exceeded": "You have exceeded your card's spending limit. Try another card or wallet."
+    }
   },
   "lang": {
     "label": "Language",

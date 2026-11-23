@@ -65,6 +65,11 @@
             {{t:checkout.placeOrder}}
           </button>
           <div id="stripe-payment-box" style="display:none; margin-top:18px;">
+            <div id="stripe-express-box" style="display:none; margin-bottom:16px;">
+              <div class="express-divider"><span>{{t:checkout.expressDivider}}</span></div>
+              <div id="stripe-express-element"></div>
+              <div class="express-divider" style="margin-top:14px;"><span>{{t:checkout.expressOrCard}}</span></div>
+            </div>
             <div id="stripe-payment-element" style="padding:14px; border:1px solid #ddd; border-radius:6px;"></div>
             <button type="button" class="btn btn-primary btn-lg" id="stripe-confirm-btn" style="width:100%; margin-top:12px;">{{t:checkout.paySecurely}}</button>
           </div>
@@ -237,13 +242,88 @@
       });
     }
 
+    // Translate common Stripe decline codes into shopper-friendly copy. The
+    // raw Stripe message is kept as a fallback so nothing is hidden from the buyer.
+    function declineMessage(code, rawMessage) {
+      const key = 'common.decline.' + String(code || '').toLowerCase();
+      const translated = tr(key);
+      return translated && translated !== key ? translated : (rawMessage || tr('common.defaultDecline'));
+    }
+
+    function showPaymentError(message) {
+      const errorEl = document.getElementById('payment-error');
+      errorEl.textContent = message || tr('checkout.errPaymentFailed');
+      errorEl.style.display = 'block';
+    }
+
+    function setConfirmBusy(busy) {
+      const confirmBtn = document.getElementById('stripe-confirm-btn');
+      confirmBtn.disabled = busy;
+      confirmBtn.textContent = busy ? tr('cart.payConfirming') : tr('checkout.paySecurely');
+    }
+
+    // Shared by the manual "Pay securely" button and the Apple Pay / Link
+    // one-click buttons. Both use the same PaymentIntent and Elements instance.
+    // Apple Pay / Link one-click buttons. The element only renders wallets that
+    // are actually available for this device, browser and Stripe account; if none
+    // are available we hide the block and the card form remains the fallback.
+    function mountExpressCheckout(stripeClient, elements) {
+      const box = document.getElementById('stripe-express-box');
+      if (!box || typeof elements.create !== 'function') return;
+      try {
+        const express = elements.create('expressCheckout', {
+          buttonLayout: 'horizontal',
+          paymentMethodOrder: ['apple_pay', 'link', 'google_pay', 'card']
+        });
+        express.on('availablepaymentmethodschange', ({ paymentMethods }) => {
+          const available = paymentMethods && Object.keys(paymentMethods)
+            .filter(key => paymentMethods[key])
+            .filter(key => ['apple_pay', 'link', 'google_pay'].includes(key));
+          box.style.display = available && available.length ? 'block' : 'none';
+        });
+        express.on('error', (event) => {
+          showPaymentError(declineMessage(event && event.error && event.error.code,
+            (event && event.error && event.error.message) || tr('checkout.errExpressPay')));
+        });
+        express.on('confirm', async (event) => {
+          // Take over confirmation ourselves so we can verify server-side and
+          // surface decline reasons in the shop's own error area.
+          if (event && typeof event.preventDefault === 'function') event.preventDefault();
+          setConfirmBusy(true);
+          try {
+            const { error, paymentIntent } = await stripeClient.confirmPayment({
+              elements,
+              confirmParams: {
+                return_url: `${window.location.origin}/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}`
+              },
+              redirect: 'if_required'
+            });
+            if (error) throw new Error(declineMessage(error.decline_code || error.code, error.message));
+            if (!paymentIntent) throw new Error(tr('cart.errNoStatus'));
+            if (paymentIntent.status === 'processing') {
+              window.location.href = `/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
+              return;
+            }
+            if (paymentIntent.status !== 'succeeded') throw new Error(tr('cart.errIncomplete'));
+            await finishStripePayment(paymentIntent.id);
+          } catch (error) {
+            console.error('Express Checkout confirmation error:', error);
+            showPaymentError(error.message);
+            setConfirmBusy(false);
+          }
+        });
+        express.mount('#stripe-express-element');
+      } catch (error) {
+        console.error('Express Checkout unavailable:', error);
+        box.style.display = 'none';
+      }
+    }
+
     async function confirmStripePayment() {
       if (!stripeState) return;
-      const confirmBtn = document.getElementById('stripe-confirm-btn');
       const errorEl = document.getElementById('payment-error');
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = tr('cart.payConfirming');
       errorEl.style.display = 'none';
+      setConfirmBusy(true);
       try {
         const { error, paymentIntent } = await stripeState.stripe.confirmPayment({
           elements: stripeState.elements,
@@ -252,7 +332,9 @@
           },
           redirect: 'if_required'
         });
-        if (error) throw new Error(error.message || tr('checkout.errPaymentFailed'));
+        if (error) {
+          throw new Error(declineMessage(error.decline_code || error.code, error.message));
+        }
         if (!paymentIntent) throw new Error(tr('cart.errNoStatus'));
         if (paymentIntent.status === 'processing') {
           window.location.href = `/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
@@ -261,22 +343,26 @@
         if (paymentIntent.status !== 'succeeded') {
           throw new Error(tr('cart.errIncomplete'));
         }
-
-        const response = await fetch('/payment/stripe/confirm-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId: stripeState.orderId, paymentIntentId: paymentIntent.id })
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) throw new Error(result.error || tr('checkout.errConfirmDelayed'));
-        window.location.href = `/payment/success?order=${encodeURIComponent(result.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
+        await finishStripePayment(paymentIntent.id);
       } catch (error) {
         console.error('Stripe confirmation error:', error);
-        errorEl.textContent = error.message || tr('checkout.errPaymentFailed');
-        errorEl.style.display = 'block';
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = tr('checkout.paySecurely');
+        showPaymentError(error.message);
+        setConfirmBusy(false);
       }
+    }
+
+    // Server-side verification, shared by the manual form and Express Checkout.
+    async function finishStripePayment(paymentIntentId) {
+      const response = await fetch('/payment/stripe/confirm-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: stripeState.orderId, paymentIntentId })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(declineMessage(result.declineCode, result.error || tr('checkout.errConfirmDelayed')));
+      }
+      window.location.href = `/payment/success?order=${encodeURIComponent(result.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntentId)}`;
     }
 
     document.getElementById('stripe-confirm-btn').addEventListener('click', confirmStripePayment);
@@ -349,10 +435,18 @@
           }
 
           const stripeClient = window.Stripe(result.publishableKey);
-          const elements = stripeClient.elements({ clientSecret: result.clientSecret });
-          const paymentElement = elements.create('payment');
+          const elements = stripeClient.elements({
+            clientSecret: result.clientSecret,
+            locale: paymentLocale
+          });
+          // Card form is always mounted: it is the guaranteed fallback even when
+          // Apple Pay / Link are unavailable on this device or account.
+          const paymentElement = elements.create('payment', {
+            wallets: { applePay: 'auto', googlePay: 'auto', link: 'auto' }
+          });
           document.getElementById('stripe-payment-box').style.display = 'block';
           paymentElement.mount('#stripe-payment-element');
+
           stripeState = {
             stripe: stripeClient,
             elements,
@@ -360,6 +454,8 @@
             orderNumber: result.orderNumber,
             accountId: selectedPaymentAccount.id
           };
+          mountExpressCheckout(stripeClient, elements);
+
           btn.hidden = true;
           document.getElementById('stripe-confirm-btn').focus();
           return;

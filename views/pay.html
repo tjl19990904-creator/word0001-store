@@ -41,6 +41,11 @@
 
     <div id="pay-area" style="background:#fff; border:1px solid #e6e6e6; border-radius:10px; padding:20px 22px;">
       <h3 style="margin-bottom:14px; font-size:1.05em;">{{t:pay.cardPayment}}</h3>
+      <div id="express-box" style="display:none; margin-bottom:16px;">
+        <div class="express-divider"><span>{{t:checkout.expressDivider}}</span></div>
+        <div id="express-element"></div>
+        <div class="express-divider" style="margin-top:14px;"><span>{{t:checkout.expressOrCard}}</span></div>
+      </div>
       <div id="payment-element"></div>
       <div id="pay-error" style="display:none; color:#b42318; background:#fef3f2; border:1px solid #fecdca; padding:10px 12px; border-radius:6px; margin-top:14px; font-size:14px;"></div>
       <button id="pay-btn" class="btn btn-primary btn-block btn-lg" style="margin-top:18px;">{{t:pay.paySecure}}</button>
@@ -121,6 +126,91 @@
         errorEl.style.display = 'block';
       }
 
+      function payDeclineMessage(code, rawMessage) {
+        var key = 'common.decline.' + String(code || '').toLowerCase();
+        var translated = tr(key);
+        return translated && translated !== key ? translated : (rawMessage || tr('common.defaultDecline'));
+      }
+
+      // Verify a succeeded intent on the server; shared by the card button and
+      // the Apple Pay / Link one-click buttons.
+      async function payVerify(intentId) {
+        var confirm = await fetch('/pay/' + encodeURIComponent(token) + '/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentIntentId: intentId })
+        });
+        var confirmResult = await confirm.json();
+        if (!confirm.ok || !confirmResult.success) {
+          throw new Error(payDeclineMessage(confirmResult.declineCode, confirmResult.error || tr('pay.confirmDelayed')));
+        }
+        window.location.href = '/pay/' + encodeURIComponent(token) + '?paid=1';
+      }
+
+      // Confirms with the shared Elements instance. `wallets` in the Payment
+      // Element plus the Express Checkout buttons cover Apple Pay and Link.
+      async function payConfirm() {
+        if (!stripeClient || !elements) return;
+        errorEl.style.display = 'none';
+        payBtn.disabled = true;
+        payBtn.textContent = tr('pay.processing');
+        try {
+          var result = await stripeClient.confirmPayment({
+            elements: elements,
+            confirmParams: { return_url: window.location.origin + '/pay/' + encodeURIComponent(token) + '?redirect=1' },
+            redirect: 'if_required'
+          });
+          if (result.error) throw new Error(payDeclineMessage(result.error.decline_code || result.error.code, result.error.message));
+          var intent = result.paymentIntent;
+          if (!intent) throw new Error(tr('pay.noStatus'));
+
+          if (intent.status === 'processing') {
+            showNotice(tr('pay.stillProcessing'), 'warn');
+            payBtn.disabled = true;
+            payBtn.textContent = tr('pay.processingShort');
+            return;
+          }
+          if (intent.status !== 'succeeded') {
+            throw new Error(tr('pay.notCompleted'));
+          }
+          await payVerify(intent.id);
+        } catch (error) {
+          showError(error.message || tr('pay.failed'));
+          payBtn.disabled = false;
+          payBtn.textContent = payButtonText;
+        }
+      }
+
+      function mountPayExpressCheckout() {
+        var box = document.getElementById('express-box');
+        if (!box || !elements || typeof elements.create !== 'function') return;
+        try {
+          var express = elements.create('expressCheckout', {
+            buttonLayout: 'horizontal',
+            paymentMethodOrder: ['apple_pay', 'link', 'google_pay', 'card']
+          });
+          express.on('availablepaymentmethodschange', function (data) {
+            var pm = data && data.paymentMethods;
+            var available = pm && Object.keys(pm).filter(function (key) {
+              return pm[key] && ['apple_pay', 'link', 'google_pay'].indexOf(key) !== -1;
+            });
+            box.style.display = available && available.length ? 'block' : 'none';
+          });
+          express.on('error', function (event) {
+            showError(payDeclineMessage(event && event.error && event.error.code,
+              (event && event.error && event.error.message) || tr('pay.failed')));
+          });
+          express.on('confirm', function (event) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            payConfirm();
+          });
+          express.mount('#express-element');
+        } catch (error) {
+          console.error('Express Checkout unavailable:', error);
+          box.style.display = 'none';
+        }
+      }
+
       async function initPayment() {
         payBtn.disabled = true;
         payBtn.textContent = tr('pay.preparing');
@@ -136,7 +226,10 @@
           }
           stripeClient = Stripe(result.publishableKey);
           elements = stripeClient.elements({ clientSecret: result.clientSecret });
-          elements.create('payment').mount('#payment-element');
+          elements.create('payment', {
+            wallets: { applePay: 'auto', googlePay: 'auto', link: 'auto' }
+          }).mount('#payment-element');
+          mountPayExpressCheckout();
           payBtn.disabled = false;
           payBtn.textContent = payButtonText;
         } catch (error) {
@@ -146,45 +239,7 @@
         }
       }
 
-      payBtn.addEventListener('click', async function () {
-        if (!stripeClient || !elements) return;
-        errorEl.style.display = 'none';
-        payBtn.disabled = true;
-        payBtn.textContent = tr('pay.processing');
-        try {
-          var result = await stripeClient.confirmPayment({
-            elements: elements,
-            confirmParams: { return_url: window.location.origin + '/pay/' + encodeURIComponent(token) + '?redirect=1' },
-            redirect: 'if_required'
-          });
-          if (result.error) throw new Error(result.error.message || tr('pay.failed'));
-          var intent = result.paymentIntent;
-          if (!intent) throw new Error(tr('pay.noStatus'));
-
-          if (intent.status === 'processing') {
-            showNotice(tr('pay.stillProcessing'), 'warn');
-            payBtn.disabled = true;
-            payBtn.textContent = tr('pay.processingShort');
-            return;
-          }
-          if (intent.status !== 'succeeded') {
-            throw new Error(tr('pay.notCompleted'));
-          }
-
-          var confirm = await fetch('/pay/' + encodeURIComponent(token) + '/confirm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentIntentId: intent.id })
-          });
-          var confirmResult = await confirm.json();
-          if (!confirm.ok || !confirmResult.success) throw new Error(confirmResult.error || tr('pay.confirmDelayed'));
-          window.location.href = '/pay/' + encodeURIComponent(token) + '?paid=1';
-        } catch (error) {
-          showError(error.message || tr('pay.failed'));
-          payBtn.disabled = false;
-          payBtn.textContent = payButtonText;
-        }
-      });
+      payBtn.addEventListener('click', payConfirm);
 
       initPayment();
     }

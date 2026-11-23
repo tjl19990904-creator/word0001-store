@@ -813,6 +813,29 @@ img { max-width: 100%; height: auto; display: block; }
   font-weight: 500;
 }
 
+/* Express Checkout (Apple Pay / Link) divider */
+.express-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-muted, #888);
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.express-divider::before,
+.express-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border, #e6e6e6);
+}
+
+.express-divider span {
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
 /* ===== Cart direct payment ===== */
 .cart-payment-prompt {
   display: flex;
