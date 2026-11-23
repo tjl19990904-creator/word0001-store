@@ -18,7 +18,7 @@ const db = require('../db/init');
 const stripe = require('stripe');
 const { getStripeAccount } = require('../lib/stripe-config');
 const ps = require('../lib/payment-status');
-const { buildCheckoutSessionParams } = require('../lib/stripe-checkout');
+const { buildCheckoutSessionParams, createCheckoutSession } = require('../lib/stripe-checkout');
 
 const router = express.Router();
 
@@ -253,9 +253,10 @@ router.post('/:token/checkout-session', async (req, res) => {
       retry: true
     });
 
-    const session = await stripe(account.config_data.secret_key).checkout.sessions.create(
+    const session = await createCheckoutSession(
+      stripe(account.config_data.secret_key),
       sessionParams,
-      { idempotencyKey: `retry-checkout-${order.order_number}-${crypto.randomBytes(8).toString('hex')}` }
+      `retry-checkout-${order.order_number}-${crypto.randomBytes(8).toString('hex')}`
     );
 
     const intentId = typeof session.payment_intent === 'string'

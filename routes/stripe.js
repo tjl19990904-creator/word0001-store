@@ -16,7 +16,7 @@ const {
   resolvePaymentMethodType,
   getBaseUrl
 } = require('../lib/payment-status');
-const { buildCheckoutSessionParams } = require('../lib/stripe-checkout');
+const { buildCheckoutSessionParams, createCheckoutSession } = require('../lib/stripe-checkout');
 
 // Wallets are enabled by `automatic_payment_methods` on the Intent. The store
 // front offers these as explicit one-click choices; the value is only recorded
@@ -266,9 +266,10 @@ router.post('/stripe/create-checkout-session', async (req, res) => {
       locale
     });
 
-    const session = await stripe(stripeAccount.config_data.secret_key).checkout.sessions.create(
+    const session = await createCheckoutSession(
+      stripe(stripeAccount.config_data.secret_key),
       sessionParams,
-      { idempotencyKey: `checkout-${created.orderNumber}` }
+      `checkout-${created.orderNumber}`
     );
 
     // Bind the session's PaymentIntent to the order so the webhook's existing

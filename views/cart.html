@@ -118,6 +118,7 @@
               <div class="form-section">
                 <h3>${esc(tr('cart.paymentMethod'))}</h3>
                 ${stripeAccount ? `<div class="payment-method selected"><span aria-hidden="true">${esc(tr('cart.card'))}</span><span>${esc(tr('cart.stripeLabel'))}</span></div>` : `<p class="payment-not-configured">${esc(tr('cart.cardUnavailable'))}</p>`}
+                ${stripeAccount ? `<p class="wallet-hint">${esc(tr('checkout.walletHint'))}</p>` : ''}
                 <div id="cart-payment-error" role="alert" style="color:#f44336; margin-top:12px; display:none;"></div>
               </div>
               <div class="form-section">

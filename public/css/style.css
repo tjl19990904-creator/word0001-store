@@ -813,6 +813,14 @@ img { max-width: 100%; height: auto; display: block; }
   font-weight: 500;
 }
 
+/* Wallet/card payment hint on hosted-checkout pages */
+.wallet-hint {
+  color: var(--text-muted, #888);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 10px 0 0;
+}
+
 /* Express Checkout (Apple Pay / Link) divider */
 .express-divider {
   display: flex;

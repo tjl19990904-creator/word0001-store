@@ -140,6 +140,7 @@
     "errAddressRequired": "Please enter a shipping address.",
     "errEmailInvalid": "Please enter a valid email address.",
     "redirecting": "Opening secure payment page...",
+    "walletHint": "Pay securely with Apple Pay, Link or a credit/debit card. All payments are processed by Stripe.",
     "expressDivider": "Quick pay with Apple Pay or Link",
     "expressOrCard": "or pay by card",
     "errExpressPay": "The wallet payment could not be completed. Please try a card instead."
