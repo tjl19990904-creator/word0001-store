@@ -13,8 +13,10 @@ const {
   isPendingIntent,
   validateIntentForOrder,
   markOrderPaid,
-  resolvePaymentMethodType
+  resolvePaymentMethodType,
+  getBaseUrl
 } = require('../lib/payment-status');
+const { buildCheckoutSessionParams } = require('../lib/stripe-checkout');
 
 // Wallets are enabled by `automatic_payment_methods` on the Intent. The store
 // front offers these as explicit one-click choices; the value is only recorded
@@ -228,6 +230,77 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
   }
 });
 
+// Hosted Checkout: create the server-priced order and a Checkout Session, then
+// hand the browser Stripe's hosted URL. The wallet buttons and card form are
+// rendered by Stripe; no payment details touch this server. Wallet preference
+// is recorded for analytics only — available methods are decided by Stripe.
+router.post('/stripe/create-checkout-session', async (req, res) => {
+  let orderId = null;
+  try {
+    const details = validateCheckoutDetails(req.body, req.t);
+    const settings = getSettings();
+    const pricing = getRequestCartPricing(req, settings);
+    const stripeAccount = getStripeAccount(req.body.paymentAccountId);
+    if (!stripeAccount) {
+      return res.status(400).json({ success: false, error: 'Stripe is not configured for the selected payment method.' });
+    }
+    const walletPreference = normalizeWalletPreference(req.body.walletPreference);
+
+    const customer = auth.getCustomer(req) || (details.email
+      ? auth.findOrCreateCustomer({ email: details.email, firstName: details.firstName, lastName: details.lastName })
+      : null);
+
+    const created = createOrder(details, pricing, stripeAccount, customer, walletPreference);
+    orderId = created.orderId;
+    auth.markLastOrder(req, created.orderId);
+
+    const order = db.findOne('orders', { id: created.orderId });
+    const locale = String(req.locale || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'auto';
+    const sessionParams = buildCheckoutSessionParams({
+      order,
+      amountCents: pricing.totalCents,
+      baseUrl: getBaseUrl(req),
+      successPath: '/payment/success',
+      cancelPath: (req.localePrefix || '') + '/checkout',
+      customerEmail: order.customer_email || details.email || undefined,
+      locale
+    });
+
+    const session = await stripe(stripeAccount.config_data.secret_key).checkout.sessions.create(
+      sessionParams,
+      { idempotencyKey: `checkout-${created.orderNumber}` }
+    );
+
+    // Bind the session's PaymentIntent to the order so the webhook's existing
+    // transaction/metadata checks validate this payment without modification.
+    const intentId = typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : (session.payment_intent && session.payment_intent.id) || '';
+    db.update('orders', created.orderId, {
+      transaction_id: intentId,
+      checkout_session_id: session.id,
+      payment_status: 'pending'
+    });
+
+    return res.json({
+      success: true,
+      url: session.url,
+      sessionId: session.id,
+      orderId: created.orderId,
+      orderNumber: created.orderNumber,
+      walletPreference
+    });
+  } catch (error) {
+    if (orderId !== null) removePendingOrder(orderId);
+    console.error('Stripe Checkout Session creation failed:', error.message);
+    const clientMessage = error.isClientError ||
+      /cart|stock|available|required|valid|configured|quantity|cent amount/i.test(error.message)
+      ? error.message
+      : 'Unable to open the secure payment page right now. Please try again.';
+    return res.status(400).json({ success: false, error: clientMessage });
+  }
+});
+
 // Server-side verification after Stripe.js confirms the payment. Webhooks remain authoritative.
 // Ownership is re-checked here: the order must belong to the session customer,
 // or to the guest checkout that created it in this browser.
@@ -295,6 +368,7 @@ router.post('/stripe/confirm-payment', async (req, res) => {
 router.get('/success', async (req, res) => {
   const orderNumber = String(req.query.order || '');
   const intentId = String(req.query.payment_intent || req.query.payment_intent_id || '');
+  const sessionId = String(req.query.session_id || '');
 
   const found = orderNumber ? db.findOne('orders', { order_number: orderNumber }) : null;
   const order = found && auth.ownsOrder(req, found) ? found : null;
@@ -308,12 +382,36 @@ router.get('/success', async (req, res) => {
 
   let isPaid = Boolean(order && order.payment_status === 'paid');
 
-  if (order && intentId && order.payment_method === 'stripe') {
+  if (order && order.payment_method === 'stripe' && (intentId || sessionId)) {
     try {
       const account = getStripeAccount(order.payment_account_id, true) || getStripeAccount(order.payment_account_id, false);
       if (account) {
-        const intent = await stripe(account.config_data.secret_key).paymentIntents.retrieve(intentId);
-        if (String(order.transaction_id) === String(intent.id) && markOrderPaid(order, intent)) isPaid = true;
+        const client = stripe(account.config_data.secret_key);
+        // Hosted Checkout return: the query carries the Session id, not the PI.
+        // Verify the Session, then validate through its underlying PaymentIntent
+        // so the exact same amount/order binding checks still apply.
+        if (sessionId && sessionId.startsWith('cs_')) {
+          const session = await client.checkout.sessions.retrieve(sessionId);
+          const sessionOrder = String(session.metadata && session.metadata.order_id || '');
+          const paidSession = session.payment_status === 'paid';
+          const sessionIntentId = typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : (session.payment_intent && session.payment_intent.id) || '';
+          const boundSession = String(order.id) === sessionOrder && (!order.checkout_session_id ||
+            String(order.checkout_session_id) === String(session.id));
+          // Hosted Checkout supplies the buyer email; persist it on first success.
+          const buyerEmail = (session.customer_details && session.customer_details.email) || session.customer_email || '';
+          if (paidSession && boundSession && buyerEmail && !order.customer_email) {
+            db.update('orders', order.id, { customer_email: String(buyerEmail).slice(0, 200) });
+          }
+          if (paidSession && boundSession && sessionIntentId) {
+            const intent = await client.paymentIntents.retrieve(sessionIntentId);
+            if (String(order.transaction_id) === String(intent.id) && markOrderPaid(order, intent)) isPaid = true;
+          }
+        } else if (intentId && intentId.startsWith('pi_')) {
+          const intent = await client.paymentIntents.retrieve(intentId);
+          if (String(order.transaction_id) === String(intent.id) && markOrderPaid(order, intent)) isPaid = true;
+        }
       }
     } catch (error) {
       console.error('Stripe return verification failed:', error.message);
@@ -404,6 +502,27 @@ router.post('/webhook', async (req, res) => {
           } else {
             db.update('orders', order.id, { payment_status: 'cancelled' });
           }
+        }
+      }
+    }
+
+    // Hosted Checkout supplies the buyer email on the Session object (the
+    // PaymentIntent does not carry customer_details). Persist it on success;
+    // the actual paid-state transition is driven by payment_intent.succeeded.
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data && event.data.object;
+      const orderId = Number(session && session.metadata && session.metadata.order_id);
+      const orderNumber = String((session && session.metadata && session.metadata.order_number) || '');
+      const order = orderId ? db.findOne('orders', { id: orderId }) : null;
+      if (order && order.payment_method === 'stripe' &&
+          String(order.order_number) === orderNumber &&
+          String(order.payment_account_id) === String(stripeAccount.id)) {
+        const buyerEmail = (session.customer_details && session.customer_details.email) || session.customer_email || '';
+        if (buyerEmail && !order.customer_email) {
+          db.update('orders', order.id, { customer_email: String(buyerEmail).slice(0, 200) });
+        }
+        if (!order.checkout_session_id && session.id) {
+          db.update('orders', order.id, { checkout_session_id: session.id });
         }
       }
     }

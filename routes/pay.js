@@ -18,6 +18,7 @@ const db = require('../db/init');
 const stripe = require('stripe');
 const { getStripeAccount } = require('../lib/stripe-config');
 const ps = require('../lib/payment-status');
+const { buildCheckoutSessionParams } = require('../lib/stripe-checkout');
 
 const router = express.Router();
 
@@ -61,6 +62,30 @@ function publicOrder(order) {
 router.get('/:token', async (req, res) => {
   let order = ps.findOrderByToken(req.params.token);
   if (!order) return renderMissing(req, res);
+
+  // Returning from hosted Checkout: verify the Session server-side first.
+  const sessionId = String(req.query.session_id || '');
+  if (sessionId.startsWith('cs_') && order.payment_status !== 'paid') {
+    try {
+      const account = getStripeAccount(order.payment_account_id, true) || getStripeAccount(order.payment_account_id, false);
+      if (account) {
+        const client = stripe(account.config_data.secret_key);
+        const session = await client.checkout.sessions.retrieve(sessionId);
+        const sessionOrder = String((session.metadata && session.metadata.order_id) || '');
+        const sessionIntentId = typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : (session.payment_intent && session.payment_intent.id) || '';
+        if (String(order.id) === sessionOrder && session.payment_status === 'paid' && sessionIntentId) {
+          const intent = await client.paymentIntents.retrieve(sessionIntentId);
+          if (String(order.transaction_id) === String(intent.id) && ps.markOrderPaid(order, intent)) {
+            order = db.findOne('orders', { id: order.id }) || order;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Checkout return verification failed:', error.message);
+    }
+  }
 
   // Returning from Stripe: verify the intent server-side before trusting it.
   const intentId = String(req.query.payment_intent || '');
@@ -194,6 +219,59 @@ router.post('/:token/confirm', async (req, res) => {
   } catch (error) {
     console.error('Retry payment confirmation failed:', error.message);
     return res.status(502).json({ success: false, error: req.t('pay.errDelayed') });
+  }
+});
+
+// Hosted Checkout for a retry order: reuse the same order/amount, create a
+// Checkout Session and hand back Stripe's hosted URL.
+router.post('/:token/checkout-session', async (req, res) => {
+  try {
+    const order = ps.findOrderByToken(req.params.token);
+    if (!order) return res.status(404).json({ success: false, error: req.t('pay.errLinkExpired') });
+    if (!ps.isPayable(order)) {
+      return res.status(409).json({ success: false, error: req.t('pay.errNotPayable') });
+    }
+
+    const account = getStripeAccount(order.payment_account_id, true) || getStripeAccount(order.payment_account_id, false);
+    if (!account) return res.status(503).json({ success: false, error: req.t('pay.errUnavailable') });
+
+    const amount = ps.moneyToCents(order.total);
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, error: req.t('pay.errInvalidAmount') });
+    }
+
+    const returnPath = '/pay/' + encodeURIComponent(order.payment_token);
+    const locale = String(req.locale || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'auto';
+    const sessionParams = buildCheckoutSessionParams({
+      order,
+      amountCents: amount,
+      baseUrl: ps.getBaseUrl(req),
+      successPath: returnPath,
+      cancelPath: returnPath,
+      customerEmail: order.customer_email || undefined,
+      locale,
+      retry: true
+    });
+
+    const session = await stripe(account.config_data.secret_key).checkout.sessions.create(
+      sessionParams,
+      { idempotencyKey: `retry-checkout-${order.order_number}-${crypto.randomBytes(8).toString('hex')}` }
+    );
+
+    const intentId = typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : (session.payment_intent && session.payment_intent.id) || '';
+    db.update('orders', order.id, {
+      transaction_id: intentId,
+      checkout_session_id: session.id,
+      payment_status: 'pending',
+      payment_last_attempt_at: new Date().toISOString()
+    });
+
+    return res.json({ success: true, url: session.url, sessionId: session.id, orderNumber: order.order_number });
+  } catch (error) {
+    console.error('Retry Checkout Session creation failed:', error.message);
+    return res.status(502).json({ success: false, error: req.t('pay.errStart') });
   }
 });
 

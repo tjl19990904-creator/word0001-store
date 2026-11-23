@@ -52,7 +52,6 @@
     const tax = {{data.tax}};
     const total = {{data.total}};
     const stripeAccount = paymentAccounts.find(account => account.type === 'stripe' && account.is_configured);
-    let stripeState = null;
 
     const esc = (value) => String(value === undefined || value === null ? '' : value)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -119,15 +118,6 @@
               <div class="form-section">
                 <h3>${esc(tr('cart.paymentMethod'))}</h3>
                 ${stripeAccount ? `<div class="payment-method selected"><span aria-hidden="true">${esc(tr('cart.card'))}</span><span>${esc(tr('cart.stripeLabel'))}</span></div>` : `<p class="payment-not-configured">${esc(tr('cart.cardUnavailable'))}</p>`}
-                <div id="cart-stripe-payment-box" style="display:none; margin-top:16px;">
-                  <div id="cart-stripe-express-box" style="display:none; margin-bottom:16px;">
-                    <div class="express-divider"><span>${esc(tr('checkout.expressDivider'))}</span></div>
-                    <div id="cart-stripe-express-element"></div>
-                    <div class="express-divider" style="margin-top:14px;"><span>${esc(tr('checkout.expressOrCard'))}</span></div>
-                  </div>
-                  <div id="cart-stripe-payment-element" style="padding:14px; border:1px solid #ddd; border-radius:6px;"></div>
-                  <button type="button" class="btn btn-primary btn-lg" id="cart-stripe-confirm-btn" style="width:100%; margin-top:12px;">${esc(tr('cart.payConfirm'))}</button>
-                </div>
                 <div id="cart-payment-error" role="alert" style="color:#f44336; margin-top:12px; display:none;"></div>
               </div>
               <div class="form-section">
@@ -153,81 +143,11 @@
       setupCartStripePayment();
     }
 
-    function cartDeclineMessage(code, rawMessage) {
-      const key = 'common.decline.' + String(code || '').toLowerCase();
-      const translated = tr(key);
-      return translated && translated !== key ? translated : (rawMessage || tr('common.defaultDecline'));
-    }
-
-    function showCartError(message) {
-      const errorEl = document.getElementById('cart-payment-error');
-      errorEl.textContent = message || tr('cart.errFailed');
-      errorEl.style.display = 'block';
-    }
-
-    // Apple Pay / Link one-click buttons on the cart quick-pay form. The card
-    // form stays mounted as a fallback when no wallet is available.
-    function mountCartExpressCheckout(stripeClient, elements, onConfirm) {
-      const box = document.getElementById('cart-stripe-express-box');
-      if (!box || typeof elements.create !== 'function') return;
-      try {
-        const express = elements.create('expressCheckout', {
-          buttonLayout: 'horizontal',
-          paymentMethodOrder: ['apple_pay', 'link', 'google_pay', 'card']
-        });
-        express.on('availablepaymentmethodschange', ({ paymentMethods }) => {
-          const available = paymentMethods && Object.keys(paymentMethods)
-            .filter(key => paymentMethods[key])
-            .filter(key => ['apple_pay', 'link', 'google_pay'].includes(key));
-          box.style.display = available && available.length ? 'block' : 'none';
-        });
-        express.on('error', (event) => {
-          showCartError(cartDeclineMessage(event && event.error && event.error.code,
-            (event && event.error && event.error.message) || tr('cart.errFailed')));
-        });
-        express.on('confirm', (event) => {
-          if (event && typeof event.preventDefault === 'function') event.preventDefault();
-          onConfirm();
-        });
-        express.mount('#cart-stripe-express-element');
-      } catch (error) {
-        console.error('Express Checkout unavailable:', error);
-        box.style.display = 'none';
-      }
-    }
-
-    // Server-side verification shared by the card button and the wallet buttons.
-    async function cartVerifyPayment(paymentIntentId) {
-      const response = await fetch('/payment/stripe/confirm-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: stripeState.orderId, paymentIntentId })
-      });
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(cartDeclineMessage(result.declineCode, result.error || tr('cart.errConfirmDelayed')));
-      }
-      window.location.href = `/payment/success?order=${encodeURIComponent(result.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntentId)}`;
-    }
-
-    function loadStripeJS() {
-      return new Promise((resolve, reject) => {
-        if (window.Stripe) return resolve();
-        const script = document.createElement('script');
-        script.src = 'https://js.stripe.com/v3/';
-        script.onload = () => window.Stripe ? resolve() : reject(new Error(tr('cart.errStripeInit')));
-        script.onerror = () => reject(new Error(tr('cart.errStripeLoad')));
-        document.head.appendChild(script);
-      });
-    }
-
     function setupCartStripePayment() {
       const form = document.getElementById('cart-payment-form');
       if (!form || !stripeAccount) return;
       const startButton = document.getElementById('cart-pay-start');
       const errorEl = document.getElementById('cart-payment-error');
-      const paymentBox = document.getElementById('cart-stripe-payment-box');
-      const confirmButton = document.getElementById('cart-stripe-confirm-btn');
 
       form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -237,69 +157,27 @@
         startButton.disabled = true;
         startButton.textContent = tr('cart.payPreparing');
         try {
-          await loadStripeJS();
           const data = Object.fromEntries(new FormData(form).entries());
           data.paymentAccountId = stripeAccount.id;
           data.paymentMethod = 'stripe';
-          const response = await fetch('/payment/stripe/create-payment-intent', {
+          const response = await fetch('/payment/stripe/create-checkout-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
           });
           const result = await response.json();
-          if (!response.ok || !result.success || !result.clientSecret || !result.publishableKey) {
+          if (!response.ok || !result.success || !result.url) {
             throw new Error(result.error || tr('cart.errStart'));
           }
-          const stripeClient = window.Stripe(result.publishableKey);
-          const elements = stripeClient.elements({ clientSecret: result.clientSecret });
-          const paymentElement = elements.create('payment', {
-            wallets: { applePay: 'auto', googlePay: 'auto', link: 'auto' }
-          });
-          paymentBox.style.display = 'block';
-          paymentElement.mount('#cart-stripe-payment-element');
-          form.querySelectorAll('input, textarea').forEach(input => input.readOnly = true);
-          stripeState = { stripe: stripeClient, elements, orderId: result.orderId, orderNumber: result.orderNumber };
-          mountCartExpressCheckout(stripeClient, elements, () => cartConfirmPayment(stripeClient, elements));
-          startButton.hidden = true;
-          confirmButton.focus();
+          window.location.href = result.url;
         } catch (error) {
-          console.error('Cart Stripe initialization error:', error);
+          console.error('Cart Checkout redirect error:', error);
           errorEl.textContent = error.message || tr('cart.errStartRetry');
           errorEl.style.display = 'block';
           startButton.disabled = false;
           startButton.textContent = tr('cart.payStart');
         }
       });
-
-      // Confirm for both the manual card button and the Apple Pay / Link buttons.
-      async function cartConfirmPayment(stripeClient, elements) {
-        if (!stripeState) return;
-        confirmButton.disabled = true;
-        confirmButton.textContent = tr('cart.payConfirming');
-        errorEl.style.display = 'none';
-        try {
-          const { error, paymentIntent } = await stripeClient.confirmPayment({
-            elements,
-            confirmParams: { return_url: `${window.location.origin}/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}` },
-            redirect: 'if_required'
-          });
-          if (error) throw new Error(cartDeclineMessage(error.decline_code || error.code, error.message));
-          if (!paymentIntent) throw new Error(tr('cart.errNoStatus'));
-          if (paymentIntent.status === 'processing') {
-            window.location.href = `/payment/success?order=${encodeURIComponent(stripeState.orderNumber)}&payment_intent=${encodeURIComponent(paymentIntent.id)}`;
-            return;
-          }
-          if (paymentIntent.status !== 'succeeded') throw new Error(tr('cart.errIncomplete'));
-          await cartVerifyPayment(paymentIntent.id);
-        } catch (error) {
-          console.error('Cart Stripe confirmation error:', error);
-          showCartError(error.message);
-          confirmButton.disabled = false;
-          confirmButton.textContent = tr('cart.payConfirm');
-        }
-      }
-
-      confirmButton.addEventListener('click', () => cartConfirmPayment(stripeState.stripe, stripeState.elements));
     }
   </script>
 </body>

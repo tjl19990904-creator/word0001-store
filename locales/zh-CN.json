@@ -139,6 +139,7 @@
     "errNameRequired": "请填写姓名。",
     "errAddressRequired": "请填写收货地址。",
     "errEmailInvalid": "请输入有效的邮箱地址。",
+    "redirecting": "正在打开安全支付页面…",
     "expressDivider": "使用 Apple Pay 或 Link 快捷支付",
     "expressOrCard": "或使用银行卡支付",
     "errExpressPay": "钱包支付未能完成，请改用银行卡重试。"
