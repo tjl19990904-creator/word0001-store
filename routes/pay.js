@@ -260,10 +260,24 @@ router.post('/:token/payment-link', async (req, res) => {
       retry: true
     });
 
-    const link = await stripe(account.config_data.secret_key).paymentLinks.create(
-      linkParams,
-      { idempotencyKey: `retry-plink-${order.order_number}-${crypto.randomBytes(8).toString('hex')}` }
-    );
+    const stripeClient = stripe(account.config_data.secret_key);
+    const idemKey = `retry-plink-${order.order_number}-${crypto.randomBytes(8).toString('hex')}`;
+    let link;
+    try {
+      link = await stripeClient.paymentLinks.create(linkParams, { idempotencyKey: idemKey });
+    } catch (linkError) {
+      if (linkParams.line_items[0].price_data.custom_unit_amount) {
+        console.warn('Retry Payment Link editable amount failed, retrying fixed:', linkError.message);
+        const fixedParams = JSON.parse(JSON.stringify(linkParams));
+        delete fixedParams.line_items[0].price_data.custom_unit_amount;
+        link = await stripeClient.paymentLinks.create(
+          fixedParams,
+          { idempotencyKey: `${idemKey}-fixed` }
+        );
+      } else {
+        throw linkError;
+      }
+    }
 
     db.update('orders', order.id, {
       payment_link_id: link.id,

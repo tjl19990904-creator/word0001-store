@@ -267,10 +267,29 @@ router.post('/stripe/create-payment-link', async (req, res) => {
       locale
     });
 
-    const link = await stripe(stripeAccount.config_data.secret_key).paymentLinks.create(
-      linkParams,
-      { idempotencyKey: `plink-${created.orderNumber}` }
-    );
+    const stripeClient = stripe(stripeAccount.config_data.secret_key);
+    let link;
+    try {
+      link = await stripeClient.paymentLinks.create(
+        linkParams,
+        { idempotencyKey: `plink-${created.orderNumber}` }
+      );
+    } catch (linkError) {
+      // Some accounts/regions reject custom_unit_amount (editable amount box).
+      // Fall back to a fixed-price link so checkout always works; the amount
+      // stays server-priced either way.
+      if (linkParams.line_items[0].price_data.custom_unit_amount) {
+        console.warn('Payment Link with editable amount failed, retrying fixed amount:', linkError.message);
+        const fixedParams = JSON.parse(JSON.stringify(linkParams));
+        delete fixedParams.line_items[0].price_data.custom_unit_amount;
+        link = await stripeClient.paymentLinks.create(
+          fixedParams,
+          { idempotencyKey: `plink-fixed-${created.orderNumber}` }
+        );
+      } else {
+        throw linkError;
+      }
+    }
 
     // A Payment Link creates its Checkout Session/PaymentIntent only when the
     // customer opens the link, so there is no intent id to bind yet. The webhook
@@ -295,7 +314,8 @@ router.post('/stripe/create-payment-link', async (req, res) => {
       /cart|stock|available|required|valid|configured|quantity|cent amount/i.test(error.message)
       ? error.message
       : 'Unable to open the secure payment page right now. Please try again.';
-    return res.status(400).json({ success: false, error: clientMessage });
+    const detail = error && error.message && String(error.message).slice(0, 200);
+    return res.status(400).json({ success: false, error: clientMessage, detail });
   }
 });
 
