@@ -19,6 +19,7 @@ const stripe = require('stripe');
 const { getStripeAccount } = require('../lib/stripe-config');
 const ps = require('../lib/payment-status');
 const { buildCheckoutSessionParams, createCheckoutSession } = require('../lib/stripe-checkout');
+const { buildPaymentLinkParams } = require('../lib/stripe-payment-link');
 
 const router = express.Router();
 
@@ -77,6 +78,12 @@ router.get('/:token', async (req, res) => {
           : (session.payment_intent && session.payment_intent.id) || '';
         if (String(order.id) === sessionOrder && session.payment_status === 'paid' && sessionIntentId) {
           const intent = await client.paymentIntents.retrieve(sessionIntentId);
+          // Payment Link orders get their intent id only after the link is paid.
+          const linkPending = Boolean(order.payment_link_id) && !order.transaction_id;
+          if (linkPending) {
+            db.update('orders', order.id, { transaction_id: intent.id });
+            order.transaction_id = intent.id;
+          }
           if (String(order.transaction_id) === String(intent.id) && ps.markOrderPaid(order, intent)) {
             order = db.findOne('orders', { id: order.id }) || order;
           }
@@ -224,6 +231,53 @@ router.post('/:token/confirm', async (req, res) => {
 
 // Hosted Checkout for a retry order: reuse the same order/amount, create a
 // Checkout Session and hand back Stripe's hosted URL.
+// Retry via Payment Link (same buy.stripe.com experience as the main checkout).
+router.post('/:token/payment-link', async (req, res) => {
+  try {
+    const order = ps.findOrderByToken(req.params.token);
+    if (!order) return res.status(404).json({ success: false, error: req.t('pay.errLinkExpired') });
+    if (!ps.isPayable(order)) {
+      return res.status(409).json({ success: false, error: req.t('pay.errNotPayable') });
+    }
+
+    const account = getStripeAccount(order.payment_account_id, true) || getStripeAccount(order.payment_account_id, false);
+    if (!account) return res.status(503).json({ success: false, error: req.t('pay.errUnavailable') });
+
+    const amount = ps.moneyToCents(order.total);
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, error: req.t('pay.errInvalidAmount') });
+    }
+
+    const returnPath = '/pay/' + encodeURIComponent(order.payment_token);
+    const locale = String(req.locale || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'auto';
+    const linkParams = buildPaymentLinkParams({
+      order,
+      amountCents: amount,
+      baseUrl: ps.getBaseUrl(req),
+      successPath: returnPath,
+      customerEmail: order.customer_email || undefined,
+      locale,
+      retry: true
+    });
+
+    const link = await stripe(account.config_data.secret_key).paymentLinks.create(
+      linkParams,
+      { idempotencyKey: `retry-plink-${order.order_number}-${crypto.randomBytes(8).toString('hex')}` }
+    );
+
+    db.update('orders', order.id, {
+      payment_link_id: link.id,
+      payment_status: 'pending',
+      payment_last_attempt_at: new Date().toISOString()
+    });
+
+    return res.json({ success: true, url: link.url, paymentLinkId: link.id, orderNumber: order.order_number });
+  } catch (error) {
+    console.error('Retry Payment Link creation failed:', error.message);
+    return res.status(502).json({ success: false, error: req.t('pay.errStart') });
+  }
+});
+
 router.post('/:token/checkout-session', async (req, res) => {
   try {
     const order = ps.findOrderByToken(req.params.token);

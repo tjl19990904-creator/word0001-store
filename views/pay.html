@@ -123,7 +123,7 @@
         payBtn.disabled = true;
         payBtn.textContent = tr('pay.preparing');
         try {
-          var response = await fetch('/pay/' + encodeURIComponent(token) + '/checkout-session', {
+          var response = await fetch('/pay/' + encodeURIComponent(token) + '/payment-link', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: '{}'

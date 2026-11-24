@@ -17,6 +17,7 @@ const {
   getBaseUrl
 } = require('../lib/payment-status');
 const { buildCheckoutSessionParams, createCheckoutSession } = require('../lib/stripe-checkout');
+const { buildPaymentLinkParams } = require('../lib/stripe-payment-link');
 
 // Wallets are enabled by `automatic_payment_methods` on the Intent. The store
 // front offers these as explicit one-click choices; the value is only recorded
@@ -230,6 +231,74 @@ router.post('/stripe/create-payment-intent', async (req, res) => {
   }
 });
 
+// Payment Link (buy.stripe.com): the exact hosted page shown in the reference
+// videos — editable amount box, adaptive CNY/USD pricing, Apple Pay / Link /
+// Amazon Pay buttons and the native Apple Pay sheet on iPhone. The order is
+// priced server-side; the link only exposes a locked amount box.
+// Checkout Session is kept as a fallback below.
+router.post('/stripe/create-payment-link', async (req, res) => {
+  let orderId = null;
+  try {
+    const details = validateCheckoutDetails(req.body, req.t);
+    const settings = getSettings();
+    const pricing = getRequestCartPricing(req, settings);
+    const stripeAccount = getStripeAccount(req.body.paymentAccountId);
+    if (!stripeAccount) {
+      return res.status(400).json({ success: false, error: 'Stripe is not configured for the selected payment method.' });
+    }
+    const walletPreference = normalizeWalletPreference(req.body.walletPreference);
+
+    const customer = auth.getCustomer(req) || (details.email
+      ? auth.findOrCreateCustomer({ email: details.email, firstName: details.firstName, lastName: details.lastName })
+      : null);
+
+    const created = createOrder(details, pricing, stripeAccount, customer, walletPreference);
+    orderId = created.orderId;
+    auth.markLastOrder(req, created.orderId);
+
+    const order = db.findOne('orders', { id: created.orderId });
+    const locale = String(req.locale || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'auto';
+    const linkParams = buildPaymentLinkParams({
+      order,
+      amountCents: pricing.totalCents,
+      baseUrl: getBaseUrl(req),
+      successPath: '/payment/success',
+      customerEmail: order.customer_email || details.email || undefined,
+      locale
+    });
+
+    const link = await stripe(stripeAccount.config_data.secret_key).paymentLinks.create(
+      linkParams,
+      { idempotencyKey: `plink-${created.orderNumber}` }
+    );
+
+    // A Payment Link creates its Checkout Session/PaymentIntent only when the
+    // customer opens the link, so there is no intent id to bind yet. The webhook
+    // binds via metadata.order_id and backfills transaction_id on success.
+    db.update('orders', created.orderId, {
+      payment_link_id: link.id,
+      payment_status: 'pending'
+    });
+
+    return res.json({
+      success: true,
+      url: link.url,
+      paymentLinkId: link.id,
+      orderId: created.orderId,
+      orderNumber: created.orderNumber,
+      walletPreference
+    });
+  } catch (error) {
+    if (orderId !== null) removePendingOrder(orderId);
+    console.error('Stripe Payment Link creation failed:', error.message);
+    const clientMessage = error.isClientError ||
+      /cart|stock|available|required|valid|configured|quantity|cent amount/i.test(error.message)
+      ? error.message
+      : 'Unable to open the secure payment page right now. Please try again.';
+    return res.status(400).json({ success: false, error: clientMessage });
+  }
+});
+
 // Hosted Checkout: create the server-priced order and a Checkout Session, then
 // hand the browser Stripe's hosted URL. The wallet buttons and card form are
 // rendered by Stripe; no payment details touch this server. Wallet preference
@@ -407,6 +476,13 @@ router.get('/success', async (req, res) => {
           }
           if (paidSession && boundSession && sessionIntentId) {
             const intent = await client.paymentIntents.retrieve(sessionIntentId);
+            // Payment Link orders have no transaction_id until first success;
+            // bind it here too (webhook remains authoritative and idempotent).
+            const linkPending = Boolean(order.payment_link_id) && !order.transaction_id;
+            if (linkPending) {
+              db.update('orders', order.id, { transaction_id: intent.id });
+              order.transaction_id = intent.id;
+            }
             if (String(order.transaction_id) === String(intent.id) && markOrderPaid(order, intent)) isPaid = true;
           }
         } else if (intentId && intentId.startsWith('pi_')) {
@@ -480,14 +556,28 @@ router.post('/webhook', async (req, res) => {
         // Guest orders have no customer id, so null and '' must compare equal.
         const orderCustomerId = order.customer_id === null || order.customer_id === undefined ? '' : String(order.customer_id);
         const intentCustomerId = String((intent.metadata && intent.metadata.customer_id) || '');
-        const bindingOk = order.payment_method === 'stripe' &&
+        const metadataBinding = order.payment_method === 'stripe' &&
           String(order.order_number) === orderNumber &&
           String(order.payment_account_id) === String(stripeAccount.id) &&
-          String(order.transaction_id) === String(intent.id) &&
           orderCustomerId === intentCustomerId;
+        // Checkout Session flow: the intent id is known at creation time and
+        // stored on the order. Payment Link flow: the link creates its intent
+        // later, so transaction_id is empty until the first webhook binds it.
+        const isPaymentLinkOrder = Boolean(order.payment_link_id) && !order.transaction_id;
+        const idBinding = isPaymentLinkOrder
+          ? true
+          : String(order.transaction_id) === String(intent.id);
+        const bindingOk = metadataBinding && idBinding;
         if (!bindingOk) {
           console.error('Stripe webhook rejected: order binding mismatch for event', event.id);
           return res.status(400).send('Payment does not match the order.');
+        }
+
+        // For Payment Link orders, bind the first accepted intent so any later
+        // event for a different intent is rejected by the id check above.
+        if (isPaymentLinkOrder) {
+          db.update('orders', order.id, { transaction_id: intent.id });
+          order.transaction_id = intent.id;
         }
 
         if (event.type === 'payment_intent.succeeded') {

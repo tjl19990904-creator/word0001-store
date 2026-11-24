@@ -281,10 +281,11 @@
       });
     }
 
-    // Hosted Checkout: create the session server-side, then send the browser
-    // to Stripe's own payment page (Apple Pay / Link / card are rendered there).
+    // Payment Link: create it server-side, then send the browser to Stripe's
+    // buy.stripe.com page — Apple Pay / Link / cards, the editable amount box
+    // and adaptive currency display are all rendered there by Stripe.
     async function redirectToStripeCheckout(formData) {
-      const response = await fetch('/payment/stripe/create-checkout-session', {
+      const response = await fetch('/payment/stripe/create-payment-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

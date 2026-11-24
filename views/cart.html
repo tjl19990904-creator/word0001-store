@@ -161,7 +161,7 @@
           const data = Object.fromEntries(new FormData(form).entries());
           data.paymentAccountId = stripeAccount.id;
           data.paymentMethod = 'stripe';
-          const response = await fetch('/payment/stripe/create-checkout-session', {
+          const response = await fetch('/payment/stripe/create-payment-link', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)

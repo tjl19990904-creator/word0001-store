@@ -156,7 +156,7 @@
     "errPhoneRequired": "Please enter your phone number.",
     "errPhoneInvalid": "Please enter a valid phone number.",
     "redirecting": "Opening secure payment page...",
-    "walletHint": "Pay securely with Apple Pay, Link or a credit/debit card. All payments are processed by Stripe.",
+    "walletHint": "You'll be taken to Stripe's secure checkout to pay with Apple Pay, Link or a card, in your preferred currency. All payments are processed by Stripe.",
     "expressDivider": "Quick pay with Apple Pay or Link",
     "expressOrCard": "or pay by card",
     "errExpressPay": "The wallet payment could not be completed. Please try a card instead."
