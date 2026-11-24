@@ -346,9 +346,14 @@ router.get('/checkout', (req, res) => {
     })
     .sort((a, b) => a.sort_order - b.sort_order);
 
+  // Stripe is the only payment provider. Hosted Checkout collects all customer
+  // details, so the checkout page only needs the configured Stripe account id.
+  const defaultStripeAccountId = (paymentAccounts.find(a => a.type === 'stripe' && a.is_configured) || {}).id || null;
+
   renderPage(res, 'checkout.html', {
     ...view,
     paymentAccounts,
+    defaultStripeAccountId,
     customer: auth.publicCustomer(customer),
     pageTitle: 'Checkout'
   });

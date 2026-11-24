@@ -110,22 +110,16 @@
           <p class="cart-payment-intro">${esc(tr('cart.completeIntro'))}</p>
           <div class="checkout-grid">
             <form id="cart-payment-form" class="checkout-form" novalidate>
-              <div class="form-section">
-                <h3>${esc(tr('cart.shippingInfo'))}</h3>
-                <div class="form-group"><label for="cart-name">${esc(tr('cart.nameLabel'))}</label><input type="text" id="cart-name" name="name" autocomplete="name" required></div>
-                <div class="form-group"><label for="cart-address">${esc(tr('cart.addressLabel'))}</label><textarea id="cart-address" name="address" rows="3" placeholder="${esc(tr('cart.addressPlaceholder'))}" required></textarea></div>
+              <div class="checkout-pay-intro">
+                <p>${esc(tr('checkout.simpleIntro'))}</p>
+                <div class="pay-method-badges" aria-hidden="true">
+                  <span class="badge-apple"> Apple Pay</span>
+                  <span class="badge-card">${esc(tr('checkout.badgeCard'))}</span>
+                </div>
+                <p class="checkout-pay-note">${esc(tr('checkout.simpleNote'))}</p>
               </div>
-              <div class="form-section">
-                <h3>${esc(tr('cart.paymentMethod'))}</h3>
-                ${stripeAccount ? `<div class="payment-method selected"><span aria-hidden="true">${esc(tr('cart.card'))}</span><span>${esc(tr('cart.stripeLabel'))}</span></div>` : `<p class="payment-not-configured">${esc(tr('cart.cardUnavailable'))}</p>`}
-                ${stripeAccount ? `<p class="wallet-hint">${esc(tr('checkout.walletHint'))}</p>` : ''}
-                <div id="cart-payment-error" role="alert" style="color:#f44336; margin-top:12px; display:none;"></div>
-              </div>
-              <div class="form-section">
-                <h3>${esc(tr('cart.orderNotes'))}</h3>
-                <div class="form-group"><textarea id="cart-notes" name="notes" rows="3" placeholder="${esc(tr('cart.notesPlaceholder'))}"></textarea></div>
-              </div>
-              <button type="submit" class="btn btn-primary btn-lg" id="cart-pay-start" style="width:100%;" ${stripeAccount ? '' : 'disabled'}>${esc(tr('cart.payStart'))}</button>
+              <div id="cart-payment-error" role="alert" style="color:#f44336; margin-top:12px; display:none;"></div>
+              <button type="submit" class="btn btn-primary btn-lg checkout-pay-btn" id="cart-pay-start" style="width:100%;" ${stripeAccount ? '' : 'disabled'}>${esc(tr('checkout.payWithApplePay'))}</button>
               <p class="cart-payment-safe">${esc(tr('cart.paySafe'))}</p>
             </form>
             <aside class="checkout-summary">
@@ -154,13 +148,15 @@
         event.preventDefault();
         errorEl.style.display = 'none';
         errorEl.textContent = '';
-        if (!form.reportValidity()) return;
         startButton.disabled = true;
         startButton.textContent = tr('cart.payPreparing');
         try {
-          const data = Object.fromEntries(new FormData(form).entries());
-          data.paymentAccountId = stripeAccount.id;
-          data.paymentMethod = 'stripe';
+          // No customer fields on this page — Stripe's hosted checkout collects
+          // name, email and address and copies them back to the order.
+          const data = {
+            paymentAccountId: stripeAccount.id,
+            paymentMethod: 'stripe'
+          };
           const response = await fetch('/payment/stripe/create-payment-link', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

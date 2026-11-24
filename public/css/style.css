@@ -715,6 +715,55 @@ img { max-width: 100%; height: auto; display: block; }
   gap: 16px;
 }
 
+/* Simplified checkout: intro, payment badges and pay button */
+.checkout-pay-intro {
+  padding: 4px 0 18px;
+}
+
+.checkout-pay-intro p {
+  color: #555;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+.pay-method-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pay-method-badges .badge-apple,
+.pay-method-badges .badge-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 130px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pay-method-badges .badge-apple {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
+.checkout-pay-intro .checkout-pay-note {
+  font-size: 13px;
+  color: var(--text-muted, #888);
+}
+
+.checkout-pay-btn {
+  min-height: 50px;
+  font-size: 16px;
+}
+
 /* Customer-details form: checkbox row */
 .form-check {
   display: flex;

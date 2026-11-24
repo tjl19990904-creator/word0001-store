@@ -14,7 +14,8 @@ const {
   validateIntentForOrder,
   markOrderPaid,
   resolvePaymentMethodType,
-  getBaseUrl
+  getBaseUrl,
+  applyStripeCustomerDetails
 } = require('../lib/payment-status');
 const { buildCheckoutSessionParams, createCheckoutSession } = require('../lib/stripe-checkout');
 const { buildPaymentLinkParams } = require('../lib/stripe-payment-link');
@@ -61,8 +62,10 @@ function badRequest(message) {
   return error;
 }
 
-// The checkout form collects a recipient name and a shipping address. The
-// order is priced from the server-side cart; no phone number is collected.
+// Customer details (name, email, address) are collected by Stripe's hosted
+// checkout page and copied back by the webhook. The merchant checkout collects
+// no such fields; any values still posted by an older client are accepted but
+// never required. The order amount always comes from the server-side cart.
 function validateCheckoutDetails(body, t) {
   const tr = typeof t === 'function' ? t : (key, fallback) => fallback;
   const details = {};
@@ -71,8 +74,6 @@ function validateCheckoutDetails(body, t) {
   }
   details.notes = String(body.notes || '').trim().slice(0, 2000);
 
-  if (!details.name) throw badRequest(tr('checkout.errNameRequired', 'Please enter a recipient name.'));
-  if (!details.address) throw badRequest(tr('checkout.errAddressRequired', 'Please enter a shipping address.'));
   if (details.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) {
     throw badRequest(tr('checkout.errEmailInvalid', 'Please enter a valid email address.'));
   }
@@ -489,11 +490,9 @@ router.get('/success', async (req, res) => {
             : (session.payment_intent && session.payment_intent.id) || '';
           const boundSession = String(order.id) === sessionOrder && (!order.checkout_session_id ||
             String(order.checkout_session_id) === String(session.id));
-          // Hosted Checkout supplies the buyer email; persist it on first success.
-          const buyerEmail = (session.customer_details && session.customer_details.email) || session.customer_email || '';
-          if (paidSession && boundSession && buyerEmail && !order.customer_email) {
-            db.update('orders', order.id, { customer_email: String(buyerEmail).slice(0, 200) });
-          }
+          // Copy name/email/address collected on Stripe's hosted page back to
+          // the order so admin can ship and the buyer can look it up.
+          if (paidSession && boundSession) applyStripeCustomerDetails(order, session);
           if (paidSession && boundSession && sessionIntentId) {
             const intent = await client.paymentIntents.retrieve(sessionIntentId);
             // Payment Link orders have no transaction_id until first success;
@@ -628,10 +627,9 @@ router.post('/webhook', async (req, res) => {
       if (order && order.payment_method === 'stripe' &&
           String(order.order_number) === orderNumber &&
           String(order.payment_account_id) === String(stripeAccount.id)) {
-        const buyerEmail = (session.customer_details && session.customer_details.email) || session.customer_email || '';
-        if (buyerEmail && !order.customer_email) {
-          db.update('orders', order.id, { customer_email: String(buyerEmail).slice(0, 200) });
-        }
+        // Customer details are collected on Stripe's hosted page — copy them
+        // onto the order (name, email, shipping address) for shipping/lookup.
+        applyStripeCustomerDetails(order, session);
         if (!order.checkout_session_id && session.id) {
           db.update('orders', order.id, { checkout_session_id: session.id });
         }

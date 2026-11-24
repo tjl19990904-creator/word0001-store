@@ -77,6 +77,8 @@ router.get('/:token', async (req, res) => {
           ? session.payment_intent
           : (session.payment_intent && session.payment_intent.id) || '';
         if (String(order.id) === sessionOrder && session.payment_status === 'paid' && sessionIntentId) {
+          // Name/email/address were collected on Stripe's hosted page.
+          ps.applyStripeCustomerDetails(order, session);
           const intent = await client.paymentIntents.retrieve(sessionIntentId);
           // Payment Link orders get their intent id only after the link is paid.
           const linkPending = Boolean(order.payment_link_id) && !order.transaction_id;

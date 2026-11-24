@@ -34,100 +34,16 @@
     <div class="checkout-grid">
       <div class="checkout-form">
         <form id="checkout-form">
-          <!-- Recipient / shipping details -->
-          <div class="form-section">
-            <h3>{{t:checkout.shippingInfo}}</h3>
-            <div class="form-group">
-              <label for="name">{{t:checkout.nameLabel}}</label>
-              <input type="text" name="name" id="name" autocomplete="name" required>
+          <div class="checkout-pay-intro">
+            <p>{{t:checkout.simpleIntro}}</p>
+            <div class="pay-method-badges" aria-hidden="true">
+              <span class="badge-apple"> Apple Pay</span>
+              <span class="badge-card">{{t:checkout.badgeCard}}</span>
             </div>
-            <div class="form-group">
-              <label for="address">{{t:checkout.addressLabel}}</label>
-              <textarea name="address" id="address" rows="3" placeholder="{{t:checkout.addressPlaceholder}}" required></textarea>
-            </div>
+            <p class="checkout-pay-note">{{t:checkout.simpleNote}}</p>
           </div>
-
-          <!-- Customer details (mirrors the Stripe-hosted checkout fields) -->
-          <div class="form-section">
-            <h3>{{t:checkout.customerDetailsTitle}}</h3>
-            <div class="form-group">
-              <label for="customer-email">{{t:checkout.emailLabel}}</label>
-              <input type="email" name="customerEmail" id="customer-email" autocomplete="email" placeholder="email@example.com" required>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="billing-country">{{t:checkout.countryLabel}}</label>
-                <select name="billingCountry" id="billing-country" required>
-                  <option value="">{{t:checkout.countrySelect}}</option>
-                  <option value="US">美国 (United States)</option>
-                  <option value="CN">中国 (China)</option>
-                  <option value="HK">中国香港 (Hong Kong, China)</option>
-                  <option value="TW">中国台湾 (Taiwan, China)</option>
-                  <option value="MO">中国澳门 (Macao, China)</option>
-                  <option value="GB">英国 (United Kingdom)</option>
-                  <option value="CA">加拿大 (Canada)</option>
-                  <option value="AU">澳大利亚 (Australia)</option>
-                  <option value="DE">德国 (Germany)</option>
-                  <option value="FR">法国 (France)</option>
-                  <option value="JP">日本 (Japan)</option>
-                  <option value="SG">新加坡 (Singapore)</option>
-                  <option value="OTHER">{{t:checkout.countryOther}}</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="billing-zip">{{t:checkout.zipLabel}}</label>
-                <input type="text" name="billingZip" id="billing-zip" autocomplete="postal-code" placeholder="12345" required>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="billing-phone">{{t:checkout.phoneLabel}}</label>
-              <input type="tel" name="billingPhone" id="billing-phone" autocomplete="tel" placeholder="+1 (201) 555-0123" required>
-            </div>
-            <div class="form-group form-check">
-              <input type="checkbox" name="saveToLink" id="save-to-link">
-              <label for="save-to-link">{{t:checkout.saveToLink}}</label>
-            </div>
-          </div>
-
-          <!-- Card details: display-only placeholders. Real card data (PAN,
-               expiry, CVC) is NEVER collected here — Stripe hosted checkout
-               handles it. No name/id on these, so they cannot be submitted. -->
-          <div class="form-section">
-            <h3>{{t:checkout.cardSectionTitle}}</h3>
-            <div class="card-placeholder" aria-hidden="true">
-              <div class="card-ph-row card-ph-number">
-                <span class="card-ph-value">1234 1234 1234 1234</span>
-                <span class="card-ph-brands">VISA · MC · AMEX · JCB</span>
-              </div>
-              <div class="card-ph-row card-ph-split">
-                <span class="card-ph-value">MM / YY</span>
-                <span class="card-ph-value">CVC</span>
-              </div>
-            </div>
-            <p class="wallet-hint">{{t:checkout.cardPlaceholderHint}}</p>
-            <div class="pay-option-preview" aria-hidden="true">
-              <span class="pay-option-item"><span class="pay-radio"></span>{{t:checkout.cardPayOption}}</span>
-              <span class="pay-option-item"><span class="pay-radio"></span> Apple Pay</span>
-            </div>
-          </div>
-
-          <!-- Payment Method -->
-          <div class="form-section">
-            <h3>{{t:checkout.paymentMethod}}</h3>
-            <div class="payment-methods" id="payment-methods"></div>
-            <p class="wallet-hint">{{t:checkout.walletHint}}</p>
-          </div>
-
-          <!-- Notes -->
-          <div class="form-section">
-            <h3>{{t:checkout.orderNotes}}</h3>
-            <div class="form-group">
-              <textarea name="notes" id="notes" rows="3" placeholder="{{t:checkout.notesPlaceholder}}"></textarea>
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn-primary btn-lg" id="place-order-btn" style="width:100%;">
-            {{t:checkout.placeOrder}}
+          <button type="submit" class="btn btn-primary btn-lg checkout-pay-btn" id="place-order-btn" style="width:100%;">
+            {{t:checkout.payWithApplePay}}
           </button>
           <div id="payment-error" role="alert" style="color:#f44336; text-align:center; margin-top:12px; display:none;"></div>
         </form>
@@ -150,19 +66,14 @@
   <script src="/js/store.js"></script>
   <script>
     const cartItems = {{data:json:cartItems}};
-    const paymentAccounts = {{data:json:paymentAccounts}};
     const shippingCost = {{data.shippingCost}};
-    // Hosted payment pages accept a short locale tag, not "zh-CN".
-    const paymentLocale = '{{lang}}'.indexOf('zh') === 0 ? 'zh' : 'en';
-    let selectedPaymentAccount = null;
 
     const esc = (value) => String(value === undefined || value === null ? '' : value)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
     const money = (value) => Number(value || 0).toFixed(2);
 
-    // Render summary items
+    // Render order summary.
     const sumEl = document.getElementById('summary-items');
     if (sumEl) {
       sumEl.innerHTML = cartItems.map(item => `
@@ -177,342 +88,36 @@
         </div>
       `).join('');
     }
-
-    // Shipping cost
     const shipEl = document.getElementById('shipping-cost');
     if (shipEl) shipEl.textContent = shippingCost === 0 ? tr('checkout.free') : '$' + money(shippingCost);
 
-    // Render payment methods
-    const payEl = document.getElementById('payment-methods');
-    if (payEl) {
-      if (paymentAccounts.length === 0) {
-        payEl.innerHTML = `<p style="color:#999; padding:12px;">${esc(tr('checkout.noPaymentMethods'))}</p>`;
-        document.getElementById('place-order-btn').disabled = true;
-      } else {
-        payEl.innerHTML = paymentAccounts.map((acc, i) => {
-          const icon = getPaymentIcon(acc.type);
-          const label = getPaymentLabel(acc.type, acc.name);
-          return `
-            <div class="payment-method ${i === 0 ? 'selected' : ''}" onclick="selectPayment(this, ${acc.id})">
-              <input type="radio" name="paymentAccountId" value="${acc.id}" id="pay-${acc.id}" ${i === 0 ? 'checked' : ''}>
-              <label for="pay-${acc.id}" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                ${icon}
-                <span>${esc(label)}</span>
-              </label>
-            </div>
-          `;
-        }).join('');
-
-        selectedPaymentAccount = paymentAccounts[0];
-      }
-    }
-
-    function getPaymentIcon(type) {
-      const icons = {
-        'stripe': '<svg width="24" height="24" viewBox="0 0 60 25" fill="none"><path d="M59.64 14.12c0-4.78-2.55-8.55-7.43-8.55-4.89 0-7.86 3.77-7.86 8.51 0 5.61 3.17 8.46 8.5 8.46 2.45 0 4.3-.56 5.7-1.34v-4.11c-1.4.7-3 1.13-5.04 1.13-2 0-3.77-.7-4-3.12h10.07c.02-.28.06-1.4.06-1.98zm-10.2-1.77c0-2.32 1.42-3.3 2.72-3.3 1.27 0 2.62.96 2.62 3.3h-5.34zM38.32 5.57c-2 0-3.3.94-4 1.6l-.27-1.27H29.5v20.94l5.13-1.08.02-5.07c.74.53 1.83 1.29 3.65 1.29 3.69 0 6.48-2.96 6.48-9.47-.02-5.93-2.87-8.94-6.46-8.94zm-1.24 14.08c-1.23 0-1.95-.44-2.45-.97l-.03-7.93c.54-.6 1.27-1.02 2.48-1.02 1.89 0 2.58 2.12 2.58 4.95 0 2.96-.67 4.97-2.58 4.97zM29.37 4.3L24.21 5.4V1.2l-5.14 1.08v4.23l5.16-1.09v20.94l5.14-1.08z" fill="#635BFF"/></svg>',
-        'airwallex': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#9FE870"><circle cx="12" cy="12" r="12"/></svg>',
-        'paypal': '<svg width="20" height="20" viewBox="0 0 20 20" fill="#003087"><path d="M7.5 4h4.8c2.5 0 4.2 1.7 3.6 4.3-.6 2.8-3 4.7-5.5 4.7H8.4l-.5 3.5H5L7.5 4z"/></svg>',
-        'bank': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M16 10v11"/></svg>',
-        'usdt': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#26A17B"><circle cx="12" cy="12" r="12"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">₮</text></svg>',
-        'wise': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#9FE870"><circle cx="12" cy="12" r="12"/></svg>',
-        'payoneer': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#FF4800"><circle cx="12" cy="12" r="12"/></svg>',
-        'cashapp': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#00D632"><circle cx="12" cy="12" r="12"/></svg>',
-        'alipay': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#1677FF"><circle cx="12" cy="12" r="12"/></svg>',
-        'wechat': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#07C160"><circle cx="12" cy="12" r="12"/></svg>',
-        'other': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#666"><circle cx="12" cy="12" r="12"/></svg>'
-      };
-      return icons[type] || icons['other'];
-    }
-
-    function getPaymentLabel(type, name) {
-      const suffixes = {
-        'bank': tr('checkout.suffixBank'),
-        'usdt': tr('checkout.suffixUsdt'),
-        'wise': tr('checkout.suffixWise'),
-        'payoneer': tr('checkout.suffixPayoneer'),
-        'cashapp': tr('checkout.suffixCashapp'),
-        'alipay': tr('checkout.suffixAlipay'),
-        'wechat': tr('checkout.suffixWechat')
-      };
-      if (type === 'stripe') return tr('checkout.labelStripe');
-      if (type === 'airwallex') return tr('checkout.labelAirwallex');
-      if (type === 'paypal') return tr('checkout.labelPaypal');
-      return suffixes[type] ? name + suffixes[type] : name;
-    }
-
-    function selectPayment(el, accountId) {
-      document.querySelectorAll('.payment-method').forEach(method => method.classList.remove('selected'));
-      if (el) el.classList.add('selected');
-      const radio = el && el.querySelector('input[type="radio"]');
-      if (radio) radio.checked = true;
-      selectedPaymentAccount = paymentAccounts.find(account => String(account.id) === String(accountId));
-
-      const btn = document.getElementById('place-order-btn');
-      btn.hidden = false;
-      btn.disabled = false;
-      if (!selectedPaymentAccount) return;
-
-      const onlineType = ['stripe', 'airwallex', 'cashapp'].includes(selectedPaymentAccount.type);
-      const configured = Boolean(selectedPaymentAccount.is_configured);
-      const labels = {
-        stripe: tr('checkout.payWithStripe'),
-        airwallex: tr('checkout.payWithAirwallex'),
-        cashapp: tr('checkout.payWithCashApp')
-      };
-      btn.textContent = onlineType
-        ? (configured ? labels[selectedPaymentAccount.type] : selectedPaymentAccount.name + tr('checkout.notConfiguredSuffix'))
-        : tr('checkout.placeOrder');
-      btn.disabled = onlineType && !configured;
-    }
-
-    if (paymentAccounts.length) {
-      selectPayment(document.querySelector('.payment-method'), paymentAccounts[0].id);
-    }
-
-    // Load Airwallex.js
-    function loadAirwallexJS() {
-      return new Promise((resolve, reject) => {
-        if (window.Airwallex) { resolve(); return; }
-        const script = document.createElement('script');
-        script.src = 'https://static.airwallex.com/airwallex.js/1.5.0/airwallex.js';
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(tr('checkout.errAirwallexSession')));
-        document.head.appendChild(script);
-      });
-    }
-
-    // Payment Link: create it server-side, then send the browser to Stripe's
-    // buy.stripe.com page — Apple Pay / Link / cards, the editable amount box
-    // and adaptive currency display are all rendered there by Stripe.
-    async function redirectToStripeCheckout(formData) {
-      const response = await fetch('/payment/stripe/create-payment-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      const result = await response.json();
-      if (!response.ok || !result.success || !result.url) {
-        throw new Error(result.error || tr('checkout.errStartStripe'));
-      }
-      window.location.href = result.url;
-    }
-
-    // Handle form submission
-    document.getElementById('checkout-form').addEventListener('submit', async function(e) {
+    // The merchant site collects no customer details. Create a Payment Link
+    // server-side and hand the buyer to Stripe's hosted page, where Apple Pay,
+    // card entry, name, email and address are all handled by Stripe.
+    document.getElementById('checkout-form').addEventListener('submit', async function (e) {
       e.preventDefault();
-
       const errorEl = document.getElementById('payment-error');
-      errorEl.style.display = 'none';
-      errorEl.textContent = '';
-
-      if (!selectedPaymentAccount) {
-        errorEl.textContent = tr('checkout.errSelectPayment');
-        errorEl.style.display = 'block';
-        return;
-      }
-
-      const customerName = document.getElementById('name').value.trim();
-      const shippingAddress = document.getElementById('address').value.trim();
-      if (!customerName) {
-        errorEl.textContent = tr('checkout.errNameRequired');
-        errorEl.style.display = 'block';
-        return;
-      }
-      if (!shippingAddress) {
-        errorEl.textContent = tr('checkout.errAddressRequired');
-        errorEl.style.display = 'block';
-        return;
-      }
-
-      // Customer-details validation (submission to payment is not wired up yet:
-      // these values are validated here but intentionally not sent to Stripe).
-      const customerEmail = document.getElementById('customer-email').value.trim();
-      const billingCountry = document.getElementById('billing-country').value;
-      const billingZip = document.getElementById('billing-zip').value.trim();
-      const billingPhone = document.getElementById('billing-phone').value.trim();
-      if (!customerEmail) {
-        errorEl.textContent = tr('checkout.errEmailRequired');
-        errorEl.style.display = 'block';
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-        errorEl.textContent = tr('checkout.errEmailInvalid');
-        errorEl.style.display = 'block';
-        return;
-      }
-      if (!billingCountry) {
-        errorEl.textContent = tr('checkout.errCountryRequired');
-        errorEl.style.display = 'block';
-        return;
-      }
-      if (!billingZip) {
-        errorEl.textContent = tr('checkout.errZipRequired');
-        errorEl.style.display = 'block';
-        return;
-      }
-      if (!billingPhone) {
-        errorEl.textContent = tr('checkout.errPhoneRequired');
-        errorEl.style.display = 'block';
-        return;
-      }
-      if (billingPhone.replace(/\D/g, '').length < 6) {
-        errorEl.textContent = tr('checkout.errPhoneInvalid');
-        errorEl.style.display = 'block';
-        return;
-      }
-
-      const formData = {
-        name: customerName,
-        address: shippingAddress,
-        notes: document.getElementById('notes').value,
-        paymentAccountId: selectedPaymentAccount.id,
-        paymentMethod: selectedPaymentAccount.type
-      };
-
       const btn = document.getElementById('place-order-btn');
       const originalText = btn.textContent;
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
       btn.disabled = true;
       btn.textContent = tr('checkout.processing');
-
       try {
-        const hasStripe = selectedPaymentAccount.type === 'stripe' && selectedPaymentAccount.is_configured;
-        const hasAirwallex = selectedPaymentAccount.type === 'airwallex' && selectedPaymentAccount.is_configured;
-        const hasCashApp = selectedPaymentAccount.type === 'cashapp' && selectedPaymentAccount.is_configured;
-
-        if (selectedPaymentAccount.type === 'stripe' && !hasStripe) {
-          throw new Error(tr('checkout.errStripeNotConfigured'));
+        const response = await fetch('/payment/stripe/create-payment-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paymentAccountId: {{data:json:defaultStripeAccountId}},
+            paymentMethod: 'stripe'
+          })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success || !result.url) {
+          throw new Error(result.error || tr('checkout.errStartStripe'));
         }
-        if (selectedPaymentAccount.type === 'airwallex' && !hasAirwallex) {
-          throw new Error(tr('checkout.errAirwallexNotConfigured'));
-        }
-        if (selectedPaymentAccount.type === 'cashapp' && !hasCashApp) {
-          throw new Error(tr('checkout.errCashAppNotConfigured'));
-        }
-
-        if (hasStripe) {
-          btn.textContent = tr('checkout.redirecting');
-          await redirectToStripeCheckout(formData);
-          return;
-        } else if (hasAirwallex) {
-          // Airwallex payment - create payment intent then redirect to hosted page
-          const response = await fetch('/payment/create-payment-intent', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-          });
-
-          const result = await response.json();
-
-          if (result.success && result.clientSecret) {
-            // Load Airwallex.js and redirect to hosted payment page
-            if (!window.Airwallex) {
-              await loadAirwallexJS();
-            }
-
-            // Use Airwallex redirectToCheckout
-            window.Airwallex.payments.redirectToCheckout({
-              env: 'production',
-              locale: paymentLocale,
-              origin: window.location.origin,
-              clientSecret: result.clientSecret,
-              successUrl: result.returnUrl,
-              failUrl: result.returnUrl.replace('airwallex-success', 'cancel'),
-              paymentMethodType: ['card', 'googlepay', 'applepay'],
-              withShipping: false
-            });
-          } else {
-            throw new Error(result.error || tr('checkout.errAirwallexSession'));
-          }
-        } else if (hasCashApp) {
-          // Cash App Pay - create Square order, then initiate Cash App Pay
-          const response = await fetch('/payment/create-payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-          });
-
-          const result = await response.json();
-
-          if (!result.success) {
-            throw new Error(result.error || tr('checkout.errCashAppCreate'));
-          }
-
-          // Load Square Web Payments SDK
-          const squareEnv = result.environment === 'production' ? 'production' : 'sandbox';
-          if (!window.Square) {
-            await new Promise((resolve, reject) => {
-              const script = document.createElement('script');
-              script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
-              if (squareEnv === 'production') {
-                script.src = 'https://web.squarecdn.com/v1/square.js';
-              }
-              script.onload = resolve;
-              script.onerror = () => reject(new Error(tr('checkout.errSquareLoad')));
-              document.head.appendChild(script);
-            });
-          }
-
-          // Initialize Square payments
-          const payments = window.Square.payments(result.appId, result.locationId);
-
-          // Create Cash App Pay payment
-          const cashAppPay = await payments.cashAppPay();
-
-          // Create payment token via Cash App Pay
-          const tokenResult = await cashAppPay.tokenize({
-            amount: {
-              currencyCode: result.currency,
-              amount: (result.totalCents / 100).toFixed(2)
-            },
-            redirectURL: result.returnUrl,
-            referenceId: result.orderNumber
-          });
-
-          if (tokenResult.status === 'OK' && tokenResult.token) {
-            // Confirm payment server-side with the token
-            const confirmResponse = await fetch('/payment/confirm-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                orderId: result.orderId,
-                paymentToken: tokenResult.token,
-                squareOrderId: result.squareOrderId
-              })
-            });
-
-            const confirmResult = await confirmResponse.json();
-
-            if (confirmResult.success) {
-              // Redirect to success page
-              window.location.href = '/payment/cashapp-success?order=' + result.orderNumber + '&square_order_id=' + result.squareOrderId;
-            } else {
-              throw new Error(confirmResult.error || tr('checkout.errCashAppFailed'));
-            }
-          } else if (tokenResult.status === 'CANCEL') {
-            throw new Error(tr('checkout.errCashAppCancelled'));
-          } else {
-            throw new Error(tokenResult.errors ? tokenResult.errors[0].message : tr('checkout.errCashAppFailed'));
-          }
-        } else {
-          // Non-Stripe payment - place order directly (offline payment)
-          const formDataEncoded = new URLSearchParams();
-          Object.keys(formData).forEach(key => formDataEncoded.append(key, formData[key]));
-
-          const response = await fetch('/checkout/place-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formDataEncoded.toString()
-          });
-
-          if (response.redirected) {
-            window.location.href = response.url;
-          } else {
-            const html = await response.text();
-            document.open();
-            document.write(html);
-            document.close();
-          }
-        }
+        btn.textContent = tr('checkout.redirecting');
+        window.location.href = result.url;
       } catch (err) {
         console.error('Checkout error:', err);
         errorEl.textContent = err.message || tr('checkout.errGeneric');
