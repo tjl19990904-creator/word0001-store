@@ -47,6 +47,70 @@
             </div>
           </div>
 
+          <!-- Customer details (mirrors the Stripe-hosted checkout fields) -->
+          <div class="form-section">
+            <h3>{{t:checkout.customerDetailsTitle}}</h3>
+            <div class="form-group">
+              <label for="customer-email">{{t:checkout.emailLabel}}</label>
+              <input type="email" name="customerEmail" id="customer-email" autocomplete="email" placeholder="email@example.com" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="billing-country">{{t:checkout.countryLabel}}</label>
+                <select name="billingCountry" id="billing-country" required>
+                  <option value="">{{t:checkout.countrySelect}}</option>
+                  <option value="US">美国 (United States)</option>
+                  <option value="CN">中国 (China)</option>
+                  <option value="HK">中国香港 (Hong Kong, China)</option>
+                  <option value="TW">中国台湾 (Taiwan, China)</option>
+                  <option value="MO">中国澳门 (Macao, China)</option>
+                  <option value="GB">英国 (United Kingdom)</option>
+                  <option value="CA">加拿大 (Canada)</option>
+                  <option value="AU">澳大利亚 (Australia)</option>
+                  <option value="DE">德国 (Germany)</option>
+                  <option value="FR">法国 (France)</option>
+                  <option value="JP">日本 (Japan)</option>
+                  <option value="SG">新加坡 (Singapore)</option>
+                  <option value="OTHER">{{t:checkout.countryOther}}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="billing-zip">{{t:checkout.zipLabel}}</label>
+                <input type="text" name="billingZip" id="billing-zip" autocomplete="postal-code" placeholder="12345" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="billing-phone">{{t:checkout.phoneLabel}}</label>
+              <input type="tel" name="billingPhone" id="billing-phone" autocomplete="tel" placeholder="+1 (201) 555-0123" required>
+            </div>
+            <div class="form-group form-check">
+              <input type="checkbox" name="saveToLink" id="save-to-link">
+              <label for="save-to-link">{{t:checkout.saveToLink}}</label>
+            </div>
+          </div>
+
+          <!-- Card details: display-only placeholders. Real card data (PAN,
+               expiry, CVC) is NEVER collected here — Stripe hosted checkout
+               handles it. No name/id on these, so they cannot be submitted. -->
+          <div class="form-section">
+            <h3>{{t:checkout.cardSectionTitle}}</h3>
+            <div class="card-placeholder" aria-hidden="true">
+              <div class="card-ph-row card-ph-number">
+                <span class="card-ph-value">1234 1234 1234 1234</span>
+                <span class="card-ph-brands">VISA · MC · AMEX · JCB</span>
+              </div>
+              <div class="card-ph-row card-ph-split">
+                <span class="card-ph-value">MM / YY</span>
+                <span class="card-ph-value">CVC</span>
+              </div>
+            </div>
+            <p class="wallet-hint">{{t:checkout.cardPlaceholderHint}}</p>
+            <div class="pay-option-preview" aria-hidden="true">
+              <span class="pay-option-item"><span class="pay-radio"></span>{{t:checkout.cardPayOption}}</span>
+              <span class="pay-option-item"><span class="pay-radio"></span> Apple Pay</span>
+            </div>
+          </div>
+
           <!-- Payment Method -->
           <div class="form-section">
             <h3>{{t:checkout.paymentMethod}}</h3>
@@ -255,6 +319,43 @@
       }
       if (!shippingAddress) {
         errorEl.textContent = tr('checkout.errAddressRequired');
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      // Customer-details validation (submission to payment is not wired up yet:
+      // these values are validated here but intentionally not sent to Stripe).
+      const customerEmail = document.getElementById('customer-email').value.trim();
+      const billingCountry = document.getElementById('billing-country').value;
+      const billingZip = document.getElementById('billing-zip').value.trim();
+      const billingPhone = document.getElementById('billing-phone').value.trim();
+      if (!customerEmail) {
+        errorEl.textContent = tr('checkout.errEmailRequired');
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+        errorEl.textContent = tr('checkout.errEmailInvalid');
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!billingCountry) {
+        errorEl.textContent = tr('checkout.errCountryRequired');
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!billingZip) {
+        errorEl.textContent = tr('checkout.errZipRequired');
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!billingPhone) {
+        errorEl.textContent = tr('checkout.errPhoneRequired');
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (billingPhone.replace(/\D/g, '').length < 6) {
+        errorEl.textContent = tr('checkout.errPhoneInvalid');
         errorEl.style.display = 'block';
         return;
       }

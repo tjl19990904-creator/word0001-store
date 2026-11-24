@@ -715,6 +715,94 @@ img { max-width: 100%; height: auto; display: block; }
   gap: 16px;
 }
 
+/* Customer-details form: checkbox row */
+.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.form-check input[type="checkbox"] {
+  width: auto;
+  margin-top: 2px;
+  flex: none;
+}
+
+.form-check label {
+  font-weight: 400;
+  font-size: 14px;
+  margin: 0;
+  cursor: pointer;
+  color: #444;
+}
+
+/* Card details: display-only placeholder (no real card data collected) */
+.card-placeholder {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.card-ph-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  color: #9a9a9a;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+}
+
+.card-ph-split {
+  border-top: 1px solid var(--border);
+}
+
+.card-ph-split .card-ph-value {
+  flex: 1;
+}
+
+.card-ph-split .card-ph-value + .card-ph-value {
+  border-left: 1px solid var(--border);
+  padding-left: 12px;
+}
+
+.card-ph-brands {
+  font-size: 11px;
+  letter-spacing: 0;
+  color: #aaa;
+  white-space: nowrap;
+}
+
+.pay-option-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.pay-option-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #555;
+}
+
+.pay-radio {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: #fff;
+}
+
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+}
+
 .checkout-summary {
   padding: 24px;
   background: var(--light-gray);
