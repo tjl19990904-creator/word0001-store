@@ -23,15 +23,19 @@ function updateCartCount() {
 }
 
 // Add to cart using URL-encoded fields supported by Express body parsing.
-async function addToCart(productId, quantity = 1) {
+async function addToCart(productId, quantity = 1, customAmount) {
   try {
+    const params = { productId: String(productId), quantity: String(quantity) };
+    if (customAmount !== undefined && customAmount !== null && String(customAmount).trim() !== '') {
+      params.customAmount = String(customAmount);
+    }
     const response = await fetch('/cart/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         'Accept': 'application/json'
       },
-      body: new URLSearchParams({ productId: String(productId), quantity: String(quantity) })
+      body: new URLSearchParams(params)
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.success) {
@@ -45,15 +49,19 @@ async function addToCart(productId, quantity = 1) {
 }
 
 // Buy now skips the cart page: persist this item in the session, then open checkout.
-async function buyNow(productId, quantity = 1) {
+async function buyNow(productId, quantity = 1, customAmount) {
   try {
+    const params = { productId: String(productId), quantity: String(quantity) };
+    if (customAmount !== undefined && customAmount !== null && String(customAmount).trim() !== '') {
+      params.customAmount = String(customAmount);
+    }
     const response = await fetch('/cart/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         'Accept': 'application/json'
       },
-      body: new URLSearchParams({ productId: String(productId), quantity: String(quantity) })
+      body: new URLSearchParams(params)
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.success) {

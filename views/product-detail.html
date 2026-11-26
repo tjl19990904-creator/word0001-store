@@ -83,10 +83,31 @@
 
     const money = (value) => Number(value || 0).toFixed(2);
 
+    // Donation amount helpers. The server re-validates this value when it is
+    // added to the cart, so this is only immediate feedback for the buyer.
+    function readDonationAmount() {
+      const input = document.getElementById('donation-amount');
+      const raw = input ? String(input.value).trim() : '';
+      if (!/^\d{1,12}(\.\d{1,2})?$/.test(raw) || Number(raw) < 0.5) {
+        showToast(tr('product.errDonationAmount', 'Enter an amount of at least $0.50 (up to two decimals).'), 'error');
+        return null;
+      }
+      return raw;
+    }
+    function addDonationToCart(productId) {
+      const amount = readDonationAmount();
+      if (amount !== null) addToCart(productId, 1, amount);
+    }
+    function buyDonation(productId) {
+      const amount = readDonationAmount();
+      if (amount !== null) buyNow(productId, 1, amount);
+    }
+
     // Render product detail
     const container = document.getElementById('product-detail-container');
     if (container && product) {
-      const inStock = Number(product.stock) > 0;
+      const isDonation = Number(product.allow_custom_amount) === 1;
+      const inStock = isDonation || Number(product.stock) > 0;
       container.innerHTML = `
         <div class="product-detail">
           <div class="product-detail-images">
@@ -108,8 +129,8 @@
             <h1>${esc(product.name)}</h1>
             ${product.short_description ? `<p class="short-desc">${esc(product.short_description)}</p>` : ''}
             <div class="price">
-              $${money(product.price)}
-              ${product.compare_price ? `<span class="compare-price" style="font-size:18px; color:#999; text-decoration:line-through; margin-left:12px;">$${money(product.compare_price)}</span>` : ''}
+              ${isDonation ? `<span class="donation-price-label">${esc(tr('product.donationAmountLabel'))}</span>` : `$${money(product.price)}
+              ${product.compare_price ? `<span class="compare-price" style="font-size:18px; color:#999; text-decoration:line-through; margin-left:12px;">$${money(product.compare_price)}</span>` : ''}`}
             </div>
             <div class="product-meta">
               ${product.sku ? `<p><strong>${esc(tr('product.sku'))}:</strong> ${esc(product.sku)}</p>` : ''}
@@ -119,7 +140,22 @@
                 : `<span style="color:#dc3545;">${esc(tr('product.outOfStock'))}</span>`}</p>
               ${product.weight ? `<p><strong>${esc(tr('product.weight'))}:</strong> ${esc(product.weight)} kg</p>` : ''}
             </div>
-            ${inStock ? `
+            ${isDonation ? `
+              <div class="donation-amount-box">
+                <label for="donation-amount">${esc(tr('product.donationAmountLabel'))}</label>
+                <div class="donation-input-row">
+                  <span class="donation-currency">$</span>
+                  <input type="text" inputmode="decimal" id="donation-amount" placeholder="25.00" autocomplete="off">
+                </div>
+                <p class="donation-hint">${esc(tr('product.donationHint'))}</p>
+              </div>
+              <button type="button" class="btn btn-primary btn-lg" style="width:100%;" onclick="buyDonation(${product.id})">
+                ${esc(tr('home.product.buyNow'))}
+              </button>
+              <button type="button" class="btn btn-secondary btn-lg" style="width:100%; margin-top:10px;" onclick="addDonationToCart(${product.id})">
+                ${esc(tr('home.product.addToCart'))}
+              </button>
+            ` : (inStock ? `
               <div class="quantity-selector">
                 <button onclick="changeQty(-1, 'qty-input')" aria-label="-">-</button>
                 <input type="number" id="qty-input" value="1" min="1" max="${Number(product.stock)}" readonly aria-label="${esc(tr('product.quantity'))}">
@@ -133,7 +169,7 @@
               </button>
             ` : `
               <button class="btn btn-secondary btn-lg" style="width:100%;" disabled>${esc(tr('product.outOfStock'))}</button>
-            `}
+            `)}
           </div>
         </div>
       `;

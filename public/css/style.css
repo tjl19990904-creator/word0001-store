@@ -504,6 +504,51 @@ img { max-width: 100%; height: auto; display: block; }
   font-size: 16px;
 }
 
+/* Donation product: buyer-chosen amount */
+.donation-price-label {
+  color: var(--primary, #2c5f2d);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.donation-amount-box {
+  margin: 20px 0;
+}
+
+.donation-amount-box label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.donation-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+}
+
+.donation-currency {
+  font-size: 20px;
+  font-weight: 600;
+  color: #555;
+}
+
+.donation-input-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 6px;
+  font-size: 18px;
+}
+
+.donation-hint {
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  margin-top: 8px;
+}
+
 .product-detail-tabs {
   margin: 40px 0;
 }

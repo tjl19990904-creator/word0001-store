@@ -78,15 +78,15 @@
                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2280%22 height=%2280%22/%3E%3C/svg%3E'">
               <div>
                 <div class="item-name"><a href="/products/${encodeURIComponent(item.slug)}">${esc(item.name)}</a></div>
-                <div class="item-price">$${money(item.price)}</div>
+                <div class="item-price">${Number(item.allow_custom_amount) === 1 ? esc(tr('product.donationLabel')) + ': $' + money(item.unitPrice !== undefined ? item.unitPrice : item.price) : '$' + money(item.price)}</div>
               </div>
-              <form method="POST" action="/cart/update" style="display:flex; align-items:center; gap:8px;">
+              ${Number(item.allow_custom_amount) === 1 ? '' : `<form method="POST" action="/cart/update" style="display:flex; align-items:center; gap:8px;">
                 <input type="hidden" name="productId" value="${item.id}">
                 <button type="button" aria-label="${esc(tr('cart.decreaseQty'))}" onclick="this.nextElementSibling.value=Math.max(1,parseInt(this.nextElementSibling.value)-1)" style="width:28px;height:28px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;border-radius:4px;">-</button>
                 <input type="number" name="quantity" value="${item.quantity}" min="1" style="width:50px; text-align:center; padding:4px; border:1px solid #e0e0e0; border-radius:4px;">
                 <button type="button" aria-label="${esc(tr('cart.increaseQty'))}" onclick="this.previousElementSibling.value=parseInt(this.previousElementSibling.value)+1" style="width:28px;height:28px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;border-radius:4px;">+</button>
                 <button type="submit" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">${esc(tr('cart.update'))}</button>
-              </form>
+              </form>`}
               <div class="item-total">$${money(item.lineTotal)}</div>
               <form method="POST" action="/cart/remove" style="display:inline;">
                 <input type="hidden" name="productId" value="${item.id}">

@@ -119,11 +119,13 @@
               <div class="product-name"><a href="/products/${encodeURIComponent(p.slug)}">${esc(p.name)}</a></div>
               ${p.short_description ? `<div class="product-short-desc">${esc(p.short_description)}</div>` : ''}
               <div style="margin-bottom:12px;">
-                <span class="product-price">$${money(p.price)}</span>
+                <span class="product-price">${Number(p.allow_custom_amount) === 1 ? esc(tr('product.customAmountPrice')) : '$' + money(p.price)}</span>
                 ${p.compare_price ? `<span class="compare-price">$${money(p.compare_price)}</span>` : ''}
               </div>
-              <button class="btn-buy-now" onclick="buyNow(${p.id})">${esc(tr('home.product.buyNow'))}</button>
-              <button class="btn-add-cart" onclick="addToCart(${p.id})">${esc(tr('home.product.addToCart'))}</button>
+              ${Number(p.allow_custom_amount) === 1
+                ? `<button class="btn-buy-now" onclick="window.location.href='/products/${encodeURIComponent(p.slug)}'">${esc(tr('product.donationChooseAmount'))}</button>`
+                : `<button class="btn-buy-now" onclick="buyNow(${p.id})">${esc(tr('home.product.buyNow'))}</button>
+              <button class="btn-add-cart" onclick="addToCart(${p.id})">${esc(tr('home.product.addToCart'))}</button>`}
             </div>
           </div>
         `).join('');

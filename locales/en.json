@@ -287,7 +287,13 @@
     "notFoundBody": "This product may have been removed or is no longer available.",
     "backToProducts": "Back to products",
     "quantity": "Quantity",
-    "thumbnail": "Thumbnail"
+    "thumbnail": "Thumbnail",
+    "donationAmountLabel": "Donation amount",
+    "donationHint": "Enter any amount you wish to donate. Minimum $0.50 — no upper limit.",
+    "donationLabel": "Donation",
+    "donationChooseAmount": "Choose donation amount",
+    "customAmountPrice": "Choose your amount",
+    "errDonationAmount": "Enter an amount of at least $0.50 (up to two decimal places)."
   },
   "about": {
     "title": "About Us",

@@ -294,6 +294,37 @@ function seedData() {
     });
   }
 
+  // Donation product: the buyer chooses the amount at checkout. Idempotent by
+  // a fixed slug so it survives data resets and never duplicates. `price` is
+  // only a placeholder — the real amount is validated and stored in the cart.
+  const DONATION_SLUG = 'donate-support-meditation-industry';
+  if (!db.products.some(p => p.slug === DONATION_SLUG)) {
+    dbWrapper.insert('products', {
+      name: 'Donate to Support the Meditation Industry',
+      slug: DONATION_SLUG,
+      name_zh: '捐赠扶持冥想行业',
+      short_description: 'Support the meditation industry with a donation of any amount.',
+      short_description_zh: '以任意金额捐赠，扶持冥想行业发展。',
+      description: 'Your donation helps support the meditation industry. Choose any amount you wish to give.',
+      description_zh: '您的捐赠将用于扶持冥想行业。请输入您希望捐赠的任意金额。',
+      price: 0,
+      compare_price: null,
+      cost: 0,
+      sku: 'DONATION-MEDITATION',
+      stock: null,
+      category_id: null,
+      status: 'active',
+      weight: 0,
+      dimensions: '',
+      meta_title: '',
+      meta_description: '',
+      featured: 0,
+      sort_order: 99,
+      allow_custom_amount: 1,
+      images: '[]'
+    });
+  }
+
   save();
 }
 

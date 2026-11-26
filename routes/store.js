@@ -55,6 +55,8 @@ function buildCartView(req, locale = i18n.DEFAULT_LOCALE) {
       image_list: imageList,
       primary_image: imageList.length > 0 ? imageList[0] : '',
       quantity: line.quantity,
+      unitPrice: line.unitCents / 100,
+      allow_custom_amount: cart.isCustomAmountProduct(line.product) ? 1 : 0,
       lineTotal: line.lineTotalCents / 100
     };
   });
@@ -94,6 +96,7 @@ router.get('/', (req, res) => {
       short_description: i18n.localizeField(locale, product.short_description_zh, product.short_description),
       category_name: category ? i18n.localizeField(locale, category.name_zh, category.name) : '',
       price: Number(product.price) || 0,
+      allow_custom_amount: cart.isCustomAmountProduct(product) ? 1 : 0,
       compare_price: product.compare_price ? Number(product.compare_price) : null,
       primary_image: imageList.length > 0 ? imageList[0] : '',
       image_list: imageList
@@ -160,6 +163,7 @@ router.get('/products', (req, res) => {
       short_description: i18n.localizeField(locale, p.short_description_zh, p.short_description),
       category_name: cat ? i18n.localizeField(locale, cat.name_zh, cat.name) : '',
       price: Number(p.price) || 0,
+      allow_custom_amount: cart.isCustomAmountProduct(p) ? 1 : 0,
       compare_price: p.compare_price ? Number(p.compare_price) : null,
       primary_image: imageList.length > 0 ? imageList[0] : ''
     };
@@ -197,6 +201,7 @@ router.get('/products/:slug', (req, res) => {
     description: i18n.localizeField(locale, record.description_zh, record.description),
     sku: record.sku || '',
     stock: Number(record.stock) || 0,
+    allow_custom_amount: cart.isCustomAmountProduct(record) ? 1 : 0,
     weight: record.weight || '',
     price: Number(record.price) || 0,
     compare_price: record.compare_price ? Number(record.compare_price) : null,
@@ -272,15 +277,16 @@ router.get('/cart', (req, res) => {
 router.post('/cart/add', (req, res) => {
   const productId = parseInt(req.body.productId);
   const quantity = parseInt(req.body.quantity) || 1;
+  const customAmount = req.body.customAmount;
   const customer = auth.getCustomer(req);
 
   let result;
   let cartCount;
   if (customer) {
-    result = cart.add(customer.id, productId, quantity);
+    result = cart.add(customer.id, productId, quantity, customAmount);
     cartCount = cart.count(customer.id);
   } else {
-    result = cart.addGuest(req.session, productId, quantity);
+    result = cart.addGuest(req.session, productId, quantity, customAmount);
     cartCount = cart.guestCount(req.session);
   }
 

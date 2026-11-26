@@ -287,7 +287,13 @@
     "notFoundBody": "该商品可能已下架或不再销售。",
     "backToProducts": "返回商品列表",
     "quantity": "数量",
-    "thumbnail": "商品图片"
+    "thumbnail": "商品图片",
+    "donationAmountLabel": "捐赠金额",
+    "donationHint": "请输入您希望捐赠的任意金额，最低 $0.50，不设上限。",
+    "donationLabel": "捐赠",
+    "donationChooseAmount": "选择捐赠金额",
+    "customAmountPrice": "金额自定义",
+    "errDonationAmount": "请输入至少 $0.50 的金额（最多两位小数）。"
   },
   "about": {
     "title": "关于我们",
