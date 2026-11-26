@@ -298,7 +298,9 @@ function seedData() {
   // a fixed slug so it survives data resets and never duplicates. `price` is
   // only a placeholder — the real amount is validated and stored in the cart.
   const DONATION_SLUG = 'donate-support-meditation-industry';
-  if (!db.products.some(p => p.slug === DONATION_SLUG)) {
+  const DONATION_IMAGE = '/uploads/products/A_serene_meditation_themed_don_2026-11-26T13-44-35.png';
+  const existingDonation = db.products.find(p => p.slug === DONATION_SLUG);
+  if (!existingDonation) {
     dbWrapper.insert('products', {
       name: 'Donate to Support the Meditation Industry',
       slug: DONATION_SLUG,
@@ -321,8 +323,14 @@ function seedData() {
       featured: 0,
       sort_order: 99,
       allow_custom_amount: 1,
-      images: '[]'
+      images: JSON.stringify([DONATION_IMAGE])
     });
+  } else if (!existingDonation.images || String(existingDonation.images).trim() === '[]') {
+    // Add the generated artwork to existing installs without overwriting an
+    // image that an administrator has already assigned.
+    existingDonation.images = JSON.stringify([DONATION_IMAGE]);
+    existingDonation.updated_at = new Date().toISOString();
+    save();
   }
 
   save();
